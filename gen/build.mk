@@ -36,16 +36,16 @@ build: start $(LIB) end
 
 # Build header
 start :
-	@echo "============================="
-	@echo "======     LIBRARY     ======"
-	@echo "============================="
-	@echo "Library name: $(LIB_NAME)"
-	@echo "Files to compile: $(words $(SRCS))"
-	@echo "Compilation Flags:"
+	@echo "$(BOLD)=============================$(RESET)"
+	@echo "$(BOLD)===        LIBRARY        ===$(RESET)"
+	@echo "$(BOLD)=============================$(RESET)"
+	@echo "$(YELLOW)Library name:$(RESET) $(LIB_NAME)"
+	@echo "$(YELLOW)Files to compile:$(RESET) $(words $(SRCS))"
+	@echo "$(YELLOW)Compilation Flags:$(RESET)"
 	@echo $(CFLAGS)
-	@echo "Include Paths:"
+	@echo "$(YELLOW)Include Paths:$(RESET)"
 	@$(foreach dir,$(patsubst $(WORKSPACE)/%,%,$(INCDIRS)),echo "  - $(dir)";)
-	@echo "Start building:"
+	@echo "$(BLUE)Start building...$(RESET)"
 
 # Building recipes
 $(OBJDIR)/%.o : $(SRCDIR)/%.c
@@ -61,14 +61,14 @@ $(LIB) : $(OBJS)
 
 # Build footer
 end :
-	@echo "Build done"
+	@echo "$(BOLD)$(GREEN)Done.$(RESET)"
 	@echo ""
 
 # Clean recipe
 clean :
-	@echo "Cleaning $(LIB_NAME) build directory ..."
+	@printf "$(BLUE)Cleaning $(LIB_NAME) build directory...$(RESET)"
 	@rm -rf $(OBJDIR)
 	@rm -rf $(LIB)
-	@echo "Done"
+	@echo "$(BOLD)$(GREEN)Done.$(RESET)"
 
 endif # BUILD_MK #
