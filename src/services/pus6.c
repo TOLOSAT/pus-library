@@ -25,22 +25,24 @@ static returnCode_t BuildS6SS4(pusTM_t *tm, pusTMDumpDataField_t *memory_dump);
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          ExecuteS6SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that load data to memory
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S1SS8 TM
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_INVALID_PARAM if cannot open the file (file does not exists)
- * @retval      #RET_ERROR if writting in the file does not work
- * @retval      #RET_SUCCESSFUL else
+ * @fn              ExecuteS6SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that load data to memory
+ * @param[in,out]   env PUS6 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_INVALID_PARAM if cannot open the file (file does not exists)
+ * @retval          #RET_ERROR if writting in the file does not work
+ * @retval          #RET_SUCCESSFUL else
  */
-returnCode_t ExecuteS6SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS6SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value      = RET_SUCCESSFUL;
     pusTCLoadDataField_t load_data = { 0 };
 
     // Unused Parameters
+    (void)(env);
     (void)(tm);
 
     // Check parameter(s)
@@ -96,22 +98,26 @@ returnCode_t ExecuteS6SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_c
 }
 
 /**
- * @fn          ExecuteS6SS3(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that dump data from memory
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S1SS8 TM
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_INVALID_PARAM if cannot open the file (file does not exists)
- * @retval      #RET_ERROR if reading the file does not work
- * @retval      #RET_ERROR if cannot build the TM
- * @retval      #RET_SUCCESSFUL else
+ * @fn              ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that dump data from memory
+ * @param[in,out]   env PUS6 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_INVALID_PARAM if cannot open the file (file does not exists)
+ * @retval          #RET_ERROR if reading the file does not work
+ * @retval          #RET_ERROR if cannot build the TM
+ * @retval          #RET_SUCCESSFUL else
  */
-returnCode_t ExecuteS6SS3(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value           = RET_SUCCESSFUL;
     pusTCDumpDataField_t requested_data = { 0 };
     pusTMDumpDataField_t dumped_data    = { 0 };
+
+    // Unused
+    (void)(env);
 
     // Check parameter(s)
     if ((tc != NULL) && (tm != NULL) && (error_code != NULL))

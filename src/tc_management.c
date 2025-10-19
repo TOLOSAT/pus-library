@@ -283,18 +283,19 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
         if (return_value == RET_SUCCESSFUL)
         {
             pusTMRequested_t tm_requested = 0u;
+            void *env                     = NULL;
 
             // Compute the routing key
             uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc.spp_header.packet_id), tc.tc_header.service, tc.tc_header.subservice);
 
             // Then, find which TC have to be executed
-            return_value =
-                ExecutionSearch(execution_context->execution_table, execution_context->execution_table_size, key, &tm_requested, &ExecutionFunction);
+            return_value = ExecutionSearch(execution_context->execution_table, execution_context->execution_table_size, key, &tm_requested,
+                                           &ExecutionFunction, &env);
             if (return_value == RET_SUCCESSFUL)
             {
                 // Now execute the TC
                 pusExecutionError_t error_code = PUS_EXECUTION_FAILED;
-                return_value                   = ExecutionFunction(&tc, &tm, &error_code);
+                return_value                   = ExecutionFunction(env, &tc, &tm, &error_code);
                 if (return_value == RET_SUCCESSFUL)
                 {
                     // Acknowledge TC execution

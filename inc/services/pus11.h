@@ -103,7 +103,7 @@ typedef struct
     fileNo_t fil_pus11_data;       /**< @brief File where the pus11 data table is stored */
     deviceNo_t dev_pus11_schedule; /**< @brief Device bound to the pus11 schedule */
     deviceNo_t dev_pus11_data;     /**< @brief Device bound to the pus11 data table */
-} pus11Context_t;
+} pus11Context_t;                  // TO DO : change context into env
 
 /**
  * @struct  pusAddActivityTCDataField_t
@@ -122,10 +122,10 @@ ASSERT_SIZE(pusAddActivityTCDataField_t, TC_MAX_DATA_SIZE)
 
 extern returnCode_t InitS11(pus11Context_t *pus11_context);
 extern returnCode_t ReleaseDelayedTC(pus11Context_t *pus11_context, time_t *next_tc_release_date);
-extern returnCode_t ExecuteS11SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
-extern returnCode_t ExecuteS11SS2(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
-extern returnCode_t ExecuteS11SS3(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
-extern returnCode_t ExecuteS11SS4(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+extern returnCode_t ExecuteS11SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+extern returnCode_t ExecuteS11SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+extern returnCode_t ExecuteS11SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+extern returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 #endif /* PUS11_H */
 

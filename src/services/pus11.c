@@ -139,19 +139,21 @@ returnCode_t ReleaseDelayedTC(pus11Context_t *pus11_context, time_t *next_tc_rel
 }
 
 /**
- * @fn          ExecuteS11SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that will enable time based schedule
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S1SS8 TM
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_SUCCESSFUL else
+ * @fn              ExecuteS11SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will enable time based schedule
+ * @param[in,out]   env PUS11 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_SUCCESSFUL else
  */
-returnCode_t ExecuteS11SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS11SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Unused Parameters
+    (void)(env);
     (void)(tc);
     (void)(tm);
 
@@ -173,19 +175,21 @@ returnCode_t ExecuteS11SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_
 }
 
 /**
- * @fn          ExecuteS11SS2(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that will disable time based schedule
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S1SS8 TM
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_SUCCESSFUL else
+ * @fn              ExecuteS11SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will disable time based schedule
+ * @param[in,out]   env PUS11 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_SUCCESSFUL else
  */
-returnCode_t ExecuteS11SS2(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS11SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Unused Parameters
+    (void)(env);
     (void)(tc);
     (void)(tm);
 
@@ -207,20 +211,22 @@ returnCode_t ExecuteS11SS2(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_
 }
 
 /**
- * @fn          ExecuteS11SS3(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that will reset time-based schedule
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S1SS8 TM
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_NOT_AVAILABLE if cannot reset the schedule
- * @retval      #RET_SUCCESSFUL else
+ * @fn              ExecuteS11SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will reset time-based schedule
+ * @param[in,out]   env PUS11 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_NOT_AVAILABLE if cannot reset the schedule
+ * @retval          #RET_SUCCESSFUL else
  */
-returnCode_t ExecuteS11SS3(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS11SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Unused Parameters
+    (void)(env);
     (void)(tc);
     (void)(tm);
 
@@ -247,23 +253,25 @@ returnCode_t ExecuteS11SS3(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_
 }
 
 /**
- * @fn          ExecuteS11SS4(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that will add activity to a time based schedule
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S1SS8 TM
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_NOT_AVAILABLE if the PUS11 has been disabled
- * @retval      #RET_NOT_AVAILABLE if the tc timestamp is outdated
- * @retval      #RET_ERROR if an error has been encountered related to the schedule
- * @retval      #RET_SUCCESSFUL else
+ * @fn              ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will add activity to a time based schedule
+ * @param[in,out]   env PUS11 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_NOT_AVAILABLE if the PUS11 has been disabled
+ * @retval          #RET_NOT_AVAILABLE if the tc timestamp is outdated
+ * @retval          #RET_ERROR if an error has been encountered related to the schedule
+ * @retval          #RET_SUCCESSFUL else
  */
-returnCode_t ExecuteS11SS4(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value           = RET_SUCCESSFUL;
     pusAddActivityTCDataField_t tc_data = { 0 };
 
     // Unused Parameters
+    (void)(env);
     (void)(tm);
 
     // Check parameter(s)

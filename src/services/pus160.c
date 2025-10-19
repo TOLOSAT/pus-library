@@ -85,213 +85,294 @@ returnCode_t InitS160(pus160Context_t *pus160_context)
 }
 
 /**
- * @fn          ExecuteS160SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that achieve a reboot to a chosen software
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for the sent TM
+ * @fn              ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that achieve a reboot to a chosen software
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for the sent TM
  */
-returnCode_t ExecuteS160SS1(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
     context_t context         = { 0 };
 
+    // Unused
+    (void)(env);
     (void)(tc);
     (void)(tm);
-    *error_code = PUS_EXECUTION_NO_ERROR;
 
-    // Read the current context
-    return_value = DeviceRead(pus160_context_pointer->dev_context, (data_t)&context, sizeof(context_t));
-
-    if (return_value == RET_SUCCESSFUL)
+    // Check parameter(s)
+    if (error_code != NULL)
     {
-        // Get the current software state
-        if (tc->spp_header.packet_data_length == (sizeof(softwareState_t) + CRC_TRAILER_SIZE + TC_HEADER_SIZE - 1u))
+        // Set error
+        *error_code = PUS_EXECUTION_NO_ERROR;
+
+        // Read the current context
+        return_value = DeviceRead(pus160_context_pointer->dev_context, (data_t)&context, sizeof(context_t));
+
+        if (return_value == RET_SUCCESSFUL)
         {
-            // Read software state from TC
-            (void)memcpy((uint8_t *)&context.state, tc->data, sizeof(softwareState_t));
-        }
-        else
-        {
-            // If the TC does not have the right size, we reboot to the safe software by default
-            context.state = SOFTWARE_STATE_SAFE;
+            // Get the current software state
+            if (tc->spp_header.packet_data_length == (sizeof(softwareState_t) + CRC_TRAILER_SIZE + TC_HEADER_SIZE - 1u))
+            {
+                // Read software state from TC
+                (void)memcpy((uint8_t *)&context.state, tc->data, sizeof(softwareState_t));
+            }
+            else
+            {
+                // If the TC does not have the right size, we reboot to the safe software by default
+                context.state = SOFTWARE_STATE_SAFE;
+            }
+
+            // Write the updated context
+            (void)DeviceWrite(pus160_context_pointer->dev_context, (data_t)&context, sizeof(context_t));
         }
 
-        // Write the updated context
-        (void)DeviceWrite(pus160_context_pointer->dev_context, (data_t)&context, sizeof(context_t));
+        // Reboot the system (this call is outside the if to ensure that even if there is a context error, we still try to reboot). Here we don't want
+        // any error to happen. The context read/write is tested in the bootloader side.
+        LOG("[TM/TC] Rebooting...\n");
+        return_value = DeviceIoctl(pus160_context_pointer->dev_reboot, 0u, NULL, 0u);
     }
-
-    // Reboot the system (this call is outside the if to ensure that even if there is a context error, we still try to reboot). Here we don't want any
-    // error to happen. The context read/write is tested in the bootloader side.
-    LOG("[TM/TC] Rebooting...\n");
-    return_value = DeviceIoctl(pus160_context_pointer->dev_reboot, 0u, NULL, 0u);
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
 
     return return_value;
 }
 
 /**
- * @fn          ExecuteS160SS2(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that selects the default rebooting software (soft_id, safe/nominal)
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for the sent TM
+ * @fn              ExecuteS160SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that selects the default rebooting software (soft_id, safe/nominal)
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for the sent TM
  */
-returnCode_t ExecuteS160SS2(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS160SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
     context_t context         = { 0 };
 
+    // Unused
+    (void)(env);
     (void)(tc);
     (void)(tm);
-    *error_code = PUS_EXECUTION_NO_ERROR;
 
-    return_value = DeviceRead(pus160_context_pointer->dev_context, (data_t)&context, sizeof(context_t));
-
-    if (return_value == RET_SUCCESSFUL)
+    // Check parameter(s)
+    if (error_code != NULL)
     {
-        // Get the current software state and software ID
-        if (tc->spp_header.packet_data_length == (sizeof(softwareSelection_t) + CRC_TRAILER_SIZE + TC_HEADER_SIZE - 1u))
+        // Set error
+        *error_code = PUS_EXECUTION_NO_ERROR;
+
+        // Get context
+        return_value = DeviceRead(pus160_context_pointer->dev_context, (data_t)&context, sizeof(context_t));
+        if (return_value == RET_SUCCESSFUL)
         {
-            softwareSelection_t software_selection = { 0 };
-
-            // Read software selection from TC
-            (void)memcpy((uint8_t *)&software_selection, tc->data, sizeof(softwareSelection_t));
-
-            // Check the software state and update the context accordingly
-            if (software_selection.software_state == SOFTWARE_STATE_NOMINAL)
+            // Get the current software state and software ID
+            if (tc->spp_header.packet_data_length == (sizeof(softwareSelection_t) + CRC_TRAILER_SIZE + TC_HEADER_SIZE - 1u))
             {
-                context.nominal_software_id = software_selection.software_id;
-            }
-            else if (software_selection.software_state == SOFTWARE_STATE_SAFE)
-            {
-                context.safe_software_id = software_selection.software_id;
+                softwareSelection_t software_selection = { 0 };
+
+                // Read software selection from TC
+                (void)memcpy((uint8_t *)&software_selection, tc->data, sizeof(softwareSelection_t));
+
+                // Check the software state and update the context accordingly
+                if (software_selection.software_state == SOFTWARE_STATE_NOMINAL)
+                {
+                    context.nominal_software_id = software_selection.software_id;
+                }
+                else if (software_selection.software_state == SOFTWARE_STATE_SAFE)
+                {
+                    context.safe_software_id = software_selection.software_id;
+                }
+                else
+                {
+                    *error_code  = PUS_EXECUTION_FAILED;
+                    return_value = RET_INVALID_PARAM;
+                }
+
+                if (return_value == RET_SUCCESSFUL)
+                {
+                    // Write the updated context
+                    return_value = DeviceWrite(pus160_context_pointer->dev_context, (data_t)&context, sizeof(context_t));
+                }
             }
             else
             {
                 *error_code  = PUS_EXECUTION_FAILED;
                 return_value = RET_INVALID_PARAM;
             }
-
-            if (return_value == RET_SUCCESSFUL)
-            {
-                // Write the updated context
-                return_value = DeviceWrite(pus160_context_pointer->dev_context, (data_t)&context, sizeof(context_t));
-            }
-        }
-        else
-        {
-            *error_code  = PUS_EXECUTION_FAILED;
-            return_value = RET_INVALID_PARAM;
         }
     }
-
-    return return_value;
-}
-
-/**
- * @fn          ExecuteS160SS17(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that requests the system context
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S160SS18 TM
- */
-returnCode_t ExecuteS160SS17(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
-{
-    (void)(tc);
-
-    returnCode_t return_value = RET_SUCCESSFUL;
-    *error_code               = PUS_EXECUTION_NO_ERROR;
-
-    return_value = BuildS160SS18(tm);
-
-    if (return_value != RET_SUCCESSFUL)
+    else
     {
-        *error_code = PUS_EXECUTION_FAILED;
+        return_value = RET_INVALID_PARAM;
     }
 
     return return_value;
 }
 
 /**
- * @fn          ExecuteS160SS19(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that requests the reduced system context (without debug info)
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S160SS20 TM
+ * @fn              ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that requests the system context
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S160SS18 TM
  */
-returnCode_t ExecuteS160SS19(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
-{
-    (void)(tc);
-
-    returnCode_t return_value = RET_SUCCESSFUL;
-    *error_code               = PUS_EXECUTION_NO_ERROR;
-
-    return_value = BuildS160SS20(tm);
-
-    if (return_value != RET_SUCCESSFUL)
-    {
-        *error_code = PUS_EXECUTION_FAILED;
-    }
-
-    return return_value;
-}
-
-/**
- * @fn          ExecuteS160SS21(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that requests the error context (only debug info)
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S160SS22 TM
- */
-returnCode_t ExecuteS160SS21(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
-{
-    (void)(tc);
-
-    returnCode_t return_value = RET_SUCCESSFUL;
-    *error_code               = PUS_EXECUTION_NO_ERROR;
-
-    return_value = BuildS160SS22(tm);
-
-    if (return_value != RET_SUCCESSFUL)
-    {
-        *error_code = PUS_EXECUTION_FAILED;
-    }
-
-    return return_value;
-}
-
-/**
- * @fn          ExecuteS160SS23(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that resets the error context
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for the sent TM
- */
-returnCode_t ExecuteS160SS23(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-
-    (void)(tc);
-    (void)(tm);
-    *error_code = PUS_EXECUTION_NO_ERROR;
-
-    return_value = DeviceIoctl(pus160_context_pointer->dev_context, 0u, NULL, 0u);
-
-    return return_value;
-}
-
-/**
- * @fn          ExecuteS160SS33(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that send S160SS34 TM (idle time report) when requested by a S160SS33
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S160SS34 TM
- */
-returnCode_t ExecuteS160SS33(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Unused
+    (void)(env);
+    (void)(tc);
+
+    // Check parameter(s)
+    if ((tm != NULL) && (error_code != NULL))
+    {
+        // Error code Initialization
+        *error_code = PUS_EXECUTION_NO_ERROR;
+
+        // Build S160S18 : full context
+        return_value = BuildS160SS18(tm);
+        if (return_value != RET_SUCCESSFUL)
+        {
+            *error_code = PUS_EXECUTION_FAILED;
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
+ * @fn              ExecuteS160SS19(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that requests the reduced system context (without debug info)
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S160SS20 TM
+ */
+returnCode_t ExecuteS160SS19(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Unused
+    (void)(env);
+    (void)(tc);
+
+    // Check parameter(s)
+    if ((tm != NULL) && (error_code != NULL))
+    {
+        // Error code Initialization
+        *error_code = PUS_EXECUTION_NO_ERROR;
+
+        // Build S160S20 : context without debug info
+        return_value = BuildS160SS20(tm);
+        if (return_value != RET_SUCCESSFUL)
+        {
+            *error_code = PUS_EXECUTION_FAILED;
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
+ * @fn              ExecuteS160SS21(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that requests the error context (only debug info)
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S160SS22 TM
+ */
+returnCode_t ExecuteS160SS21(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Unused
+    (void)(env);
+    (void)(tc);
+
+    // Check parameter(s)
+    if ((tm != NULL) && (error_code != NULL))
+    {
+        // Error code Initialization
+        *error_code = PUS_EXECUTION_NO_ERROR;
+
+        // Build S160S22 : error context only
+        return_value = BuildS160SS22(tm);
+        if (return_value != RET_SUCCESSFUL)
+        {
+            *error_code = PUS_EXECUTION_FAILED;
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
+ * @fn              ExecuteS160SS23(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that resets the error context
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for the sent TM
+ */
+returnCode_t ExecuteS160SS23(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Unused
+    (void)(env);
+    (void)(tc);
+    (void)(tm);
+
+    // Check parameter(s)
+    if (error_code != NULL)
+    {
+        // Error code Initialization
+        *error_code = PUS_EXECUTION_NO_ERROR;
+
+        // Reset the error context
+        return_value = DeviceIoctl(pus160_context_pointer->dev_context, 0u, NULL, 0u);
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
+ * @fn              ExecuteS160SS33(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that send S160SS34 TM (idle time report) when requested by a S160SS33
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S160SS34 TM
+ */
+returnCode_t ExecuteS160SS33(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Unused
+    (void)(env);
     (void)(tc);
 
     // Check parameter(s)
@@ -327,17 +408,19 @@ returnCode_t ExecuteS160SS33(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *erro
 }
 
 /**
- * @fn          ExecuteS160SS35(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that send S160SS36 TM (stack usage report) when requested by a S160SS35
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S160SS36 TM
+ * @fn              ExecuteS160SS35(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that send S160SS36 TM (stack usage report) when requested by a S160SS35
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S160SS36 TM
  */
-returnCode_t ExecuteS160SS35(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS160SS35(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Unused
+    (void)(env);
     (void)(tc);
 
     // Check parameter(s)
@@ -373,13 +456,14 @@ returnCode_t ExecuteS160SS35(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *erro
 }
 
 /**
- * @fn          ExecuteS160SS37(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that send S160SS38 TM (system usage report) when requested by a S160SS37
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S160SS38 TM
+ * @fn              ExecuteS160SS37(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that send S160SS38 TM (system usage report) when requested by a S160SS37
+ * @param[in,out]   env PUS160 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S160SS38 TM
  */
-returnCode_t ExecuteS160SS37(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS160SS37(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
@@ -390,6 +474,7 @@ returnCode_t ExecuteS160SS37(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *erro
     static taskUsage_t temp_task_usages[PUS160_MAX_NB_TASK] = { 0 };
 
     // Unused
+    (void)(env);
     (void)(tc);
 
     // Check parameter(s)

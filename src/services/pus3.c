@@ -48,20 +48,22 @@ returnCode_t BuildS3SS25(pusTM_t *tm, housekeepingReport_t *report)
 }
 
 /**
- * @fn          ExecuteS3SS5(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that send enable HK report by HKID (if HKID = 0 enable all)
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S1SS8 TM
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_INVALID_PARAM if HKID does not exist
- * @retval      #RET_SUCCESSFUL else
+ * @fn              ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that send enable HK report by HKID (if HKID = 0 enable all)
+ * @param[in,out]   env PUS3 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_INVALID_PARAM if HKID does not exist
+ * @retval          #RET_SUCCESSFUL else
  */
-returnCode_t ExecuteS3SS5(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Unused Parameters
+    (void)(env);
     (void)(tm);
 
     // Check parameter(s)
@@ -89,20 +91,22 @@ returnCode_t ExecuteS3SS5(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_c
 }
 
 /**
- * @fn          ExecuteS3SS6(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief       Function that send disable HK report by HKID (if HKID = 0 disable all)
- * @param[in]   tc TC that has been received
- * @param[out]  tm TM that will be sent
- * @param[out]  error_code Indicates which error has been encountered for S1SS8 TM
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_NOT_AVAILABLE if HKID does not exist
- * @retval      #RET_SUCCESSFUL else
+ * @fn              ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that send disable HK report by HKID (if HKID = 0 disable all)
+ * @param[in,out]   env PUS3 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_NOT_AVAILABLE if HKID does not exist
+ * @retval          #RET_SUCCESSFUL else
  */
-returnCode_t ExecuteS3SS6(pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+returnCode_t ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Unused Parameters
+    (void)(env);
     (void)(tm);
 
     // Check parameter(s)
