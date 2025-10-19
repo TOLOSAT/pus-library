@@ -23,6 +23,7 @@ CHECKER_CMDS += --inline-suppr # Allows to add checker suppress inside the code 
 CHECKER_CMDS += --addon=$(CONF_MISRA) # Check MISRA C compliancee if misra settings are added
 CHECKER_CMDS += --output-file=$(CHECKER_LOGS) # Print the result in a log file
 CHECKER_CMDS += --error-exitcode=1 # Returns 1 if cppcheck has encountered an error
+CHECKER_CMDS += --suppress=misra-c2012-11.5 # Suppression of this rule because it is use to pass PUS environment
 
 # Checker recipes
 verif :
