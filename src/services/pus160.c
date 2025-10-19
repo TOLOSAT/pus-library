@@ -238,7 +238,7 @@ returnCode_t ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 
         // Get context
         return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-        if (return_value != RET_SUCCESSFUL)
+        if (return_value == RET_SUCCESSFUL)
         {
             // Build S160S18 : full context
             return_value = BuildS160SS18(tm, &context);
@@ -284,7 +284,7 @@ returnCode_t ExecuteS160SS19(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 
         // Get context
         return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-        if (return_value != RET_SUCCESSFUL)
+        if (return_value == RET_SUCCESSFUL)
         {
             // Build S160S20 : context without debug info
             return_value = BuildS160SS20(tm, &context);
@@ -329,7 +329,7 @@ returnCode_t ExecuteS160SS21(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 
         // Get context
         return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-        if (return_value != RET_SUCCESSFUL)
+        if (return_value == RET_SUCCESSFUL)
         {
             // Build S160S22 : error context only
             return_value = BuildS160SS22(tm, &context);
