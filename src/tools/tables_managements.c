@@ -144,7 +144,7 @@ returnCode_t RouteSearch(pusRoutingTable_t *routing_table, pusTableSize_t table_
 
 /**
  * @fn          ExecutionSearch(pusExecutionTable_t *execution_table, pusTableSize_t table_size, uint32_t key, pusTMRequested_t *tm_requested,
- * pusExecutionFunctionPtr_t *execution_function_ptr, void* env)
+ * pusExecutionFunctionPtr_t *execution_function_ptr, void** env)
  * @brief       This function search for execution function in execution table with a key
  * @param[in]   execution_table Execution table where we search the function to execute
  * @param[in]   table_size Size of the execution table

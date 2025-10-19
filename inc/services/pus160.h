@@ -39,8 +39,8 @@ typedef struct
 } ATTR_BYTE_ALIGNED softwareSelection_t;
 
 /**
- * @struct  pus160Context_t
- * @brief   Struct type for pus160 context
+ * @struct  pus160Env_t
+ * @brief   Struct type for pus160 environment
  */
 typedef struct
 {
@@ -49,13 +49,13 @@ typedef struct
     deviceNo_t dev_context;      /**< Device for reading system context */
     deviceNo_t dev_system_usage; /**< Device for reading system usage */
     deviceNo_t dev_task_usages;  /**< Device for reading task usages */
-} pus160Context_t;               // Change context into env
+} pus160Env_t;
 
 /*************************** Variables Declarations **************************/
 
 /*************************** Functions Declarations **************************/
 
-extern returnCode_t InitS160(pus160Context_t *pus160_context);
+extern returnCode_t InitS160(pus160Env_t *pus160_env);
 extern returnCode_t ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 extern returnCode_t ExecuteS160SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 extern returnCode_t ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
