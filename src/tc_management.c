@@ -48,11 +48,11 @@ returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context)
     returnCode_t device_status;
 
     // Check parameter(s)
-    if ((receive_context != NULL) && (receive_context->routing_table != NULL) && (receive_context->routing_table_size != 0u)
+    if ((receive_context != NULL) && (receive_context->routing_table.entries != NULL) && (receive_context->routing_table.size != 0u)
         && (receive_context->tc != NULL))
     {
         // First initialise the routing table
-        return_value = InitRoutingTable(receive_context->routing_table, receive_context->routing_table_size);
+        return_value = InitRoutingTable(&receive_context->routing_table);
         if (return_value == RET_SUCCESSFUL)
         {
             // If nothing wrong happened, initialise the RX resource (buffer or peripheral)
@@ -136,25 +136,24 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
                 return_value = FormatTC(tc);
                 if (return_value == RET_SUCCESSFUL)
                 {
-                    deviceNo_t dev_route = 0u;
+                    pusRoutingTableEntry_t *p_entry = NULL;
 
                     // Compute the routing key
                     uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc->spp_header.packet_id), tc->tc_header.service, tc->tc_header.subservice);
 
                     // Then, route the TC toward the task that will execute it.
-                    return_value =
-                        RouteSearch((pusRoutingTable_t *)receive_context->routing_table, receive_context->routing_table_size, key, &dev_route);
+                    return_value = RouteSearch(key, &receive_context->routing_table, &p_entry);
                     if (return_value == RET_SUCCESSFUL)
                     {
                         // Acknowledge TC
                         (void)SendAcptAckTM(tc, &acceptance_tm, receive_context->dev_ack);
 
                         // Send TC to the task that will execute it
-                        return_value = DeviceWrite(dev_route, (data_t)tc, TC_MAX_SIZE);
+                        return_value = DeviceWrite(p_entry->dev_route, (data_t)tc, TC_MAX_SIZE);
                         if (return_value == RET_SUCCESSFUL)
                         {
                             taskNo_t tc_processor = NO_TASK;
-                            return_value          = DeviceIoctl(dev_route, IOCTL_BUFFER_GET_RECEIVER, &tc_processor, sizeof(taskNo_t));
+                            return_value          = DeviceIoctl(p_entry->dev_route, IOCTL_BUFFER_GET_RECEIVER, &tc_processor, sizeof(taskNo_t));
                             if ((return_value == RET_SUCCESSFUL) && (tc_processor != NO_TASK))
                             {
                                 return_value = SendSignal(tc_processor, SIGNAL_TC);
@@ -211,10 +210,10 @@ returnCode_t InitTCExecutionContext(pusExecutionContext_t *execution_context)
     returnCode_t device_status = RET_SUCCESSFUL;
 
     // Check parameter(s)
-    if ((execution_context != NULL) && (execution_context->execution_table != NULL) && (execution_context->execution_table_size != 0u))
+    if ((execution_context != NULL) && (execution_context->execution_table.entries != NULL) && (execution_context->execution_table.size != 0u))
     {
         // First initialise the execution table
-        return_value = InitExecutionTable(execution_context->execution_table, execution_context->execution_table_size);
+        return_value = InitExecutionTable(&execution_context->execution_table);
         if (return_value == RET_SUCCESSFUL)
         {
             // If nothing wrong happened and a TC buffer is requested, initialise device for TM buffer
@@ -269,11 +268,10 @@ returnCode_t InitTCExecutionContext(pusExecutionContext_t *execution_context)
  */
 returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
 {
-    returnCode_t return_value                   = RET_SUCCESSFUL;
-    pusTC_t tc                                  = { 0 };
-    pusTM_t tm                                  = { 0 };
-    pusTM_t execution_tm                        = { 0 };
-    pusExecutionFunctionPtr_t ExecutionFunction = NULL;
+    returnCode_t return_value = RET_SUCCESSFUL;
+    pusTC_t tc                = { 0 };
+    pusTM_t tm                = { 0 };
+    pusTM_t execution_tm      = { 0 };
 
     // Check parameter(s)
     if (execution_context->status == PUS_CONTEXT_INITIALIZED)
@@ -282,27 +280,25 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
         return_value = DeviceRead(execution_context->dev_tc, (data_t)&tc, TC_MAX_SIZE);
         if (return_value == RET_SUCCESSFUL)
         {
-            pusTMRequested_t tm_requested = 0u;
-            void *env                     = NULL;
+            pusExecutionTableEntry_t *p_entry = NULL;
 
             // Compute the routing key
             uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc.spp_header.packet_id), tc.tc_header.service, tc.tc_header.subservice);
 
             // Then, find which TC have to be executed
-            return_value = ExecutionSearch(execution_context->execution_table, execution_context->execution_table_size, key, &tm_requested,
-                                           &ExecutionFunction, &env);
+            return_value = ExecutionSearch(key, &execution_context->execution_table, &p_entry);
             if (return_value == RET_SUCCESSFUL)
             {
                 // Now execute the TC
                 pusExecutionError_t error_code = PUS_EXECUTION_FAILED;
-                return_value                   = ExecutionFunction(env, &tc, &tm, &error_code);
+                return_value                   = p_entry->execution_function(p_entry->env, &tc, &tm, &error_code);
                 if (return_value == RET_SUCCESSFUL)
                 {
                     // Acknowledge TC execution
                     (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
 
                     // Check if a specific TM has to be send
-                    if (tm_requested == TM_REQUESTED)
+                    if (p_entry->tm_requested == TM_REQUESTED)
                     {
                         // Send specific TM
                         return_value = DeviceWrite(execution_context->dev_tm, (data_t)&tm, TM_MAX_SIZE);
