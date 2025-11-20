@@ -1,5 +1,5 @@
 /**
- * @file    tc_management.h
+ * @file    tc_management.c
  * @author  Merlin Kooshmanian
  * @brief   Source file for TC management
  *
@@ -22,6 +22,7 @@
 /*************************** Functions Declarations **************************/
 
 static returnCode_t FormatTC(pusTC_t *tc);
+static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAcceptanceError_t *error);
 static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error);
 static void EraseTC(pusTC_t *tc);
 static returnCode_t SendAcptAckTM(const pusTC_t *tc, pusTM_t *acceptance_tm, deviceNo_t dev_ack);
@@ -372,6 +373,39 @@ static returnCode_t FormatTC(pusTC_t *tc)
     return return_value;
 }
 
+static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAcceptanceError_t *error)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+    uint16_t packet_id        = HALF_WORD_BYTE_SWAP(tc_packet_id);
+
+    // Check Packet Version Number
+    if (((packet_id & PACKET_VERSION_NUMBER_MASK) >> PACKET_VERSION_NUMBER_OFFSET) == PACKET_VERSION_NUMBER)
+    {
+        // Check Packet Type
+        if (((packet_id & PACKET_TYPE_MASK) >> PACKET_TYPE_OFFSET) == TC_TYPE)
+        {
+            // Check Secondary Header Presence
+            if (((packet_id & HEADER_PRESENCE_MASK) >> HEADER_PRESENCE_OFFSET) != HEADER_PRESENT)
+            {
+                return_value = RET_INVALID_PARAM;
+                *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+            }
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+        *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+    }
+
+    return return_value;
+}
+
 /**
  * @fn          CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
  * @brief       Function that verifies if TC is valid (right version, type, size)
@@ -387,38 +421,21 @@ static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
     uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
     uint8_t pus_version       = tc->tc_header.version_flags;
 
-    // Check Packet Version Number
-    if (((packet_id & PACKET_VERSION_NUMBER_MASK) >> PACKET_VERSION_NUMBER_OFFSET) == PACKET_VERSION_NUMBER)
+    return_value = CheckTCPacketIdValidity(tc->spp_header.packet_id, error);
+
+    if (return_value == RET_SUCCESSFUL)
     {
-        // Check Packet Type
-        if (((packet_id & PACKET_TYPE_MASK) >> PACKET_TYPE_OFFSET) == TC_TYPE)
+        // Check Size
+        if (data_size >= (TC_HEADER_SIZE + CRC_TRAILER_SIZE))
         {
-            // Check Secondary Header Presence
-            if (((packet_id & HEADER_PRESENCE_MASK) >> HEADER_PRESENCE_OFFSET) == HEADER_PRESENT)
+            // Check PUS version number
+            if (((pus_version & PUS_VERSION_NUMBER_MASK) >> PUS_VERSION_NUMBER_OFFSET) == PUS_VERSION_NUMBER)
             {
-                // Check Size
-                if (data_size >= (TC_HEADER_SIZE + CRC_TRAILER_SIZE))
-                {
-                    // Check PUS version number
-                    if (((pus_version & PUS_VERSION_NUMBER_MASK) >> PUS_VERSION_NUMBER_OFFSET) == PUS_VERSION_NUMBER)
-                    {
-                        // Check CRC
-                        if (CheckCRC(tc) != RET_SUCCESSFUL)
-                        {
-                            return_value = RET_INVALID_PARAM;
-                            *error       = PUS_ACCEPTANCE_INVALID_CRC;
-                        }
-                    }
-                    else
-                    {
-                        return_value = RET_INVALID_PARAM;
-                        *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
-                    }
-                }
-                else
+                // Check CRC
+                if (CheckCRC(tc) != RET_SUCCESSFUL)
                 {
                     return_value = RET_INVALID_PARAM;
-                    *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+                    *error       = PUS_ACCEPTANCE_INVALID_CRC;
                 }
             }
             else
@@ -435,8 +452,7 @@ static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
     }
     else
     {
-        return_value = RET_INVALID_PARAM;
-        *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+        *error = PUS_ACCEPTANCE_INVALID_FORMAT;
     }
 
     return return_value;
