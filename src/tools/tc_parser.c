@@ -22,89 +22,108 @@
 
 // WIP WIP WIP WIP WIP WIP WIP WIP WIPOWI PIPWIWPWIPIWIWPIWPW OIOWIWOPIOOWIOOWO
 
-#define RX_BUFFER_SIZE            2048 /**< Size of the RX buffer in bytes */
-#define CCSDS_PRIMARY_HEADER_SIZE 6u   /**< Size of the CCSDS primary header in bytes */
-#define MIN_TC_HEADER_SIZE        6u   /**< Minimum size of a TC header in bytes, which is the size of a CCSDS Space Packet's primary header */
+#define RX_BUFFER_SIZE     2048 /**< Size of the RX buffer in bytes */
+#define MIN_TC_HEADER_SIZE 6u   /**< Minimum size of a TC header in bytes, which is the size of a CCSDS Space Packet's primary header */
 
 typedef struct
 {
     uint8_t data[RX_BUFFER_SIZE];
     size_t write_index; // updated by DMA
     size_t read_index;  // updated by parser
-} RxBuffer;
+} rxBuffer_t;
 
 typedef enum
 {
     TC_STATE_VALID,
     TC_STATE_PARTIAL,
     TC_STATE_INVALID
-} TcState;
+} tcState_t;
 
 typedef struct
 {
     size_t start;  // start index of current TC
     size_t length; // total declared TC length (from header)
-    TcState state;
-} TcFrame;
+    tcState_t state;
+} tcFrame_t;
 
 /*************************** Functions Declarations **************************/
 
-int FindTCHeader(const RxBuffer *rx);
-uint16_t ExtractTCLength(RxBuffer *rx, size_t start);
-bool HasFullTC(RxBuffer *rx, size_t start, size_t length);
-bool VerifyCRC(RxBuffer *rx, size_t start, size_t length);
-TcState ParseOneTC(RxBuffer *rx, TcFrame *tc);
-returnCode_t ParseBuffer(RxBuffer *rx_buffer);
+returnCode_t FindTCHeader(const rxBuffer_t *rx, size_t *header_offset);
+returnCode_t ExtractTCLength(rxBuffer_t *rx, size_t start, uint16_t *length);
+returnCode_t HasFullTC(rxBuffer_t *rx, size_t start, size_t length, bool *has_full);
+returnCode_t VerifyCRC(rxBuffer_t *rx, size_t start, size_t length, bool *is_valid);
+returnCode_t ParseOneTC(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state);
+returnCode_t ParseBuffer(rxBuffer_t *rx_buffer);
 
 /*************************** Variables Definitions ***************************/
 
 /*************************** Functions Definitions ***************************/
 
-int FindTCHeader(const RxBuffer *rx)
+/**
+ * @brief Finds the offset of a TC header in the RX buffer
+ *
+ * @param rx the RX buffer
+ * @param header_offset the offset of the found header, starting from read_index, -1 if not found
+ * @return returnCode_t
+ */
+returnCode_t FindTCHeader(const rxBuffer_t *rx, size_t *header_offset)
 {
-    size_t i = rx->read_index;
+    returnCode_t return_value = RET_SUCCESSFUL;
+    size_t i                  = rx->read_index;
+    size_t header_offset_tmp  = (size_t)-1;
 
-    while (i != rx->write_index)
+    while (i != rx->write_index && header_offset_tmp == (size_t)-1)
     {
         uint16_t packet_id = ((uint16_t)rx->data[i] << 8) | rx->data[(i + 1) % RX_BUFFER_SIZE];
         if (CheckTCPacketIdValidity(packet_id, NULL) == RET_SUCCESSFUL)
         {
-            return (i - rx->read_index + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
+            header_offset_tmp = (i - rx->read_index + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
         }
         i = (i + 1) % RX_BUFFER_SIZE;
     }
 
-    return -1; // no header found
+    *header_offset = header_offset_tmp;
+
+    if (header_offset_tmp == (size_t)-1)
+    {
+        return_value = RET_ERROR;
+    }
+
+    return return_value;
 }
 
 /**
- * @brief
+ * @brief Extracts the total length of a TC from the RX buffer
  *
  * @param rx the RX buffer
  * @param start start index of the TC
- * @return uint16_t
+ * @param length pointer to store the extracted length
+ * @return returnCode_t
  */
-uint16_t ExtractTCLength(RxBuffer *rx, size_t start)
+returnCode_t ExtractTCLength(rxBuffer_t *rx, size_t start, uint16_t *length)
 {
-    uint8_t b4 = rx->data[(start + 4) % RX_BUFFER_SIZE];
-    uint8_t b5 = rx->data[(start + 5) % RX_BUFFER_SIZE];
+    uint8_t byte4 = rx->data[(start + 4) % RX_BUFFER_SIZE];
+    uint8_t byte5 = rx->data[(start + 5) % RX_BUFFER_SIZE];
 
-    uint16_t length_field = ((uint16_t)b4 << 8) | b5;
-    return length_field + CCSDS_PRIMARY_HEADER_SIZE; // header not included in length field
+    uint16_t length_field = HALF_WORD_BYTE_SWAP(((uint16_t)byte4 << 8) | byte5);
+    *length               = length_field + MIN_TC_HEADER_SIZE; // header not included in length field
+    return RET_SUCCESSFUL;
 }
 
 /**
- * @brief
+ * @brief Checks if the RX buffer contains a full TC frame starting at a given index
  *
  * @param rx the RX buffer
  * @param start start index of the TC
  * @param length total declared TC length
- * @return if full TC is available in buffer
+ * @param has_full pointer to store if full TC is available
+ * @return returnCode_t
  */
-bool HasFullTC(RxBuffer *rx, size_t start, size_t length)
+returnCode_t HasFullTC(rxBuffer_t *rx, size_t start, size_t length, bool *has_full)
 {
     size_t available = (rx->write_index - start + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
-    return available >= length;
+    *has_full        = available >= length;
+    return RET_SUCCESSFUL;
 }
 
 /**
@@ -113,13 +132,16 @@ bool HasFullTC(RxBuffer *rx, size_t start, size_t length)
  * @param rx the RX buffer
  * @param start start index of the TC
  * @param length total declared TC length
- * @return if CRC is valid
+ * @param is_valid pointer to store if CRC is valid
+ * @return returnCode_t
  */
-bool VerifyCRC(RxBuffer *rx, size_t start, size_t length)
+returnCode_t VerifyCRC(rxBuffer_t *rx, size_t start, size_t length, bool *is_valid)
 {
-    uint16_t crc_calc = computeCRC(&rx->data[start], length - 2);
-    uint16_t crc_recv = ((uint16_t)rx->data[(start + length - 2) % RX_BUFFER_SIZE] << 8) | rx->data[(start + length - 1) % RX_BUFFER_SIZE];
-    return crc_calc == crc_recv;
+    uint16_t crc_calc = computeCRC(&rx->data[start], length - CRC_TRAILER_SIZE);
+    uint16_t crc_recv =
+        ((uint16_t)rx->data[(start + length - CRC_TRAILER_SIZE) % RX_BUFFER_SIZE] << 8) | rx->data[(start + length - 1) % RX_BUFFER_SIZE];
+    *is_valid = (crc_calc == crc_recv);
+    return RET_SUCCESSFUL;
 }
 
 /**
@@ -127,35 +149,45 @@ bool VerifyCRC(RxBuffer *rx, size_t start, size_t length)
  *
  * @param rx the RX buffer
  * @param tc the TC frame structure to fill
- * @return TcState
+ * @param state pointer to store the TC state
+ * @return returnCode_t
  */
-TcState ParseOneTC(RxBuffer *rx, TcFrame *tc)
+returnCode_t ParseOneTC(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state)
 {
-    tc->start  = rx->read_index;
-    tc->length = ExtractTCLength(rx, tc->start);
+    tc->start = rx->read_index;
+    ExtractTCLength(rx, tc->start, &tc->length);
 
-    if (!HasFullTC(rx, tc->start, tc->length))
+    bool has_full_tc;
+    HasFullTC(rx, tc->start, tc->length, &has_full_tc);
+
+    bool is_crc_valid;
+    VerifyCRC(rx, tc->start, tc->length, &is_crc_valid);
+
+    if (has_full_tc && is_crc_valid)
     {
-        return TC_STATE_PARTIAL;
+        *state = TC_STATE_VALID;
+    }
+    else if (!has_full_tc)
+    {
+        *state = TC_STATE_PARTIAL;
+    }
+    else
+    {
+        *state = TC_STATE_INVALID;
     }
 
-    if (VerifyCRC(rx, tc->start, tc->length))
-    {
-        return TC_STATE_VALID;
-    }
-
-    return TC_STATE_INVALID;
+    return RET_SUCCESSFUL;
 }
 
 /**
- * @fn          ParseBuffer(RxBuffer *rx_buffer)
+ * @fn          ParseBuffer(rxBuffer_t *rx_buffer)
  * @brief       Function that parse the RX buffer to extract TCs
  * @param[in]   rx_buffer Pointer to the RX buffer structure
  * @retval      #RET_INVALID_PARAM if a pointer is null
  * @retval      #RET_ERROR if parsing failed
  * @retval      #RET_SUCCESSFUL else
  */
-returnCode_t ParseBuffer(RxBuffer *rx)
+returnCode_t ParseBuffer(rxBuffer_t *rx)
 {
     while (1)
     {
@@ -177,8 +209,8 @@ returnCode_t ParseBuffer(RxBuffer *rx)
         rx->read_index = (rx->read_index + header_offset) % RX_BUFFER_SIZE;
 
         // Try to parse a TC from here
-        TcFrame tc;
-        TcState state = ParseOneTC(rx, &tc);
+        tcFrame_t tc;
+        tcState_t state = ParseOneTC(rx, &tc);
 
         if (state == TC_STATE_PARTIAL)
         {
