@@ -31,7 +31,7 @@
 
 /*************************** Functions Declarations **************************/
 
-extern returnCode_t ParseBuffer(rxBuffer_t *rx_buffer);
+extern static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state);
 
 #endif /* TC_PARSER_H */
 

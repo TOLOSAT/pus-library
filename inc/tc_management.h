@@ -70,9 +70,6 @@ extern returnCode_t ReceiveTC(pusReceiveContext_t *receive_context);
 extern returnCode_t InitTCExecutionContext(pusExecutionContext_t *execution_context);
 extern returnCode_t ExecuteTC(pusExecutionContext_t *execution_context);
 
-extern returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAcceptanceError_t *error);
-extern returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error);
-
 #endif /* TC_MANAGEMENT_H */
 
 /**
