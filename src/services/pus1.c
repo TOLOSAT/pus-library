@@ -3,7 +3,7 @@
  * @author  Merlin Kooshmanian
  * @brief   Source file for PUS 1 functions (Request verification)
  *
- * @copyright Copyright (c) TOLOSAT 2025
+ * @copyright Copyright (c) TOLOSAT 2026
  */
 
 /******************************* Include Files *******************************/
