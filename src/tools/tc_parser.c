@@ -26,23 +26,23 @@
 
 typedef struct
 {
-    uint8_t data[RX_BUFFER_SIZE];
-    size_t write_index; // updated by DMA
-    size_t read_index;  // updated by parser
+    uint8_t data[RX_BUFFER_SIZE]; /**< @brief Data buffer */
+    size_t write_index;           /**< @brief Write index, updated by DMA */
+    size_t read_index;            /**< @brief Read index, updated by parser */
 } rxBuffer_t;
 
 typedef enum
 {
-    TC_STATE_VALID,
-    TC_STATE_PARTIAL,
-    TC_STATE_INVALID
+    TC_STATE_VALID   = 0u, /**< TC is valid */
+    TC_STATE_PARTIAL = 1u, /**< TC is partial */
+    TC_STATE_INVALID = 2u, /**< TC is invalid */
 } tcState_t;
 
 typedef struct
 {
-    size_t start;  // start index of current TC
-    size_t length; // total declared TC length (from header)
-    tcState_t state;
+    size_t start;    /**< @brief Start index of current TC */
+    size_t length;   /**< @brief Total declared TC length (from header) */
+    tcState_t state; /**< @brief State of the current TC being parsed */
 } tcFrame_t;
 
 /*************************** Functions Declarations **************************/
@@ -85,7 +85,7 @@ static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAccep
                 return_value = RET_INVALID_PARAM;
                 *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
             }
-
+            // TODO : check PUS version in secondary header
             else
             {
                 return_value = RET_INVALID_PARAM;
@@ -172,7 +172,8 @@ static returnCode_t FindTCHeader(const rxBuffer_t *rx, size_t *header_offset)
     size_t i                  = rx->read_index;
     size_t header_offset_tmp  = (size_t)-1;
 
-    while (i != rx->write_index && header_offset_tmp == (size_t)-1)
+    // Try to find an header until we reach the write index
+    while (i != rx->write_index)
     {
         sppPacketId_t packet_id = HALF_WORD_BYTE_SWAP(((uint16_t)rx->data[i] << 8) | rx->data[(i + 1) % RX_BUFFER_SIZE]);
         if (CheckTCPacketIdValidity(packet_id, NULL) == RET_SUCCESSFUL)
@@ -292,52 +293,61 @@ static returnCode_t ParseOneTC(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state)
  * @brief       Function that parse the RX buffer to extract TCs
  * @param[in]   rx_buffer Pointer to the RX buffer structure
  * @param[out]  tc Pointer to the TC frame structure to fill
- * @param[out]  state Pointer to store the TC state
+ * @param[out]  acceptance_error Pointer to store the TC acceptance error code
  * @retval      #RET_INVALID_PARAM if a pointer is null
  * @retval      #RET_ERROR if parsing failed
  * @retval      #RET_SUCCESSFUL else
  */
-static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state)
+static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, ACCEPTANCE_ERROR *acceptance_error)
 {
-    size_t available          = (rx->write_index - rx->read_index + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
-    returnCode_t return_value = RET_SUCCESSFUL;
+    returnCode_t ret  = RET_SUCCESSFUL;
+    *acceptance_error = PUS_ACCEPTANCE_NO_ERROR;
 
-    // Check if there's enough data to read even the minimum TC header
-    if (available >= SPP_HEADER_SIZE)
+    if ((rx != NULL) && (tc != NULL))
     {
-        int header_offset = FindTCHeader(rx);
-        // Header found
-        if (header_offset >= 0)
+        size_t header_offset = 0u;
+        ret                  = FindTCHeader(rx, &header_offset);
+
+        if (ret == RET_SUCCESSFUL)
         {
+            // Skip header
             rx->read_index = (rx->read_index + header_offset) % RX_BUFFER_SIZE;
 
             // Try to parse a TC from here
-            ParseOneTC(rx, tc, state);
+            ret = ParseOneTC(rx, tc, state);
 
-            if (*state == TC_STATE_PARTIAL)
+            if (ret == RET_SUCCESSFUL)
             {
-                // Not enough data yet to parse the full TC
-                return_value = RET_NOT_AVAILABLE;
+                if ((*state == TC_STATE_VALID) || (*state == TC_STATE_INVALID))
+                {
+                    // Advance read pointer if TC is full (valid or invalid)
+                    rx->read_index = (rx->read_index + tc->length) % RX_BUFFER_SIZE;
+                }
+                else
+                {
+                    // Partial TC, header OK but not complete
+                    *acceptance_error = PUS_ACCEPTANCE_INVALID_FORMAT;
+                    ret               = RET_NOT_AVAILABLE;
+                }
             }
-            else if (*state == TC_STATE_INVALID)
+            else
             {
-                // Invalid TC, skip the first byte
-                rx->read_index = (rx->read_index + 1) % RX_BUFFER_SIZE;
-                return_value   = RET_ERROR;
+                // The parsing is not successful so the CRC is invalid
+                *acceptance_error = PUS_ACCEPTANCE_INVALID_CRC;
             }
-
-            // Advance read pointer appropriately
-            rx->read_index = (rx->read_index + tc->length) % RX_BUFFER_SIZE;
         }
         else
         {
-            return_value = RET_ERROR;
+            // No header found, so no TC at all, advance to the write index
+            // because there is nothing usable between the read index and the write index.
+            rx->read_index    = rx->write_index;
+            *acceptance_error = PUS_ACCEPTANCE_CANT_FORMAT;
         }
     }
     else
     {
-        return_value = RET_ERROR;
+        ret = RET_INVALID_PARAM;
     }
 
-    return return_value;
+    return ret;
 }
