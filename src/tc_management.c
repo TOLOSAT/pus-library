@@ -22,14 +22,11 @@
 /*************************** Functions Declarations **************************/
 
 static returnCode_t FormatTC(pusTC_t *tc);
-static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAcceptanceError_t *error);
-static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error);
 static void EraseTC(pusTC_t *tc);
 static returnCode_t SendAcptAckTM(const pusTC_t *tc, pusTM_t *acceptance_tm, deviceNo_t dev_ack);
 static returnCode_t SendAcptNackTM(const pusTC_t *tc, pusTM_t *acceptance_tm, deviceNo_t dev_ack, pusAcceptanceError_t acceptance_error);
 static returnCode_t SendExecAckTM(const pusTC_t *tc, pusTM_t *execution_tm, deviceNo_t dev_ack);
 static returnCode_t SendExecNackTM(const pusTC_t *tc, pusTM_t *execution_tm, deviceNo_t dev_ack, pusExecutionError_t execution_error);
-static returnCode_t CheckCRC(pusTC_t *tc);
 
 /*************************** Variables Definitions ***************************/
 
@@ -541,31 +538,6 @@ static returnCode_t SendExecNackTM(const pusTC_t *tc, pusTM_t *execution_tm, dev
     else
     {
         return_value = RET_INVALID_PARAM;
-    }
-
-    return return_value;
-}
-
-/**
- * @fn          CheckCRC(pusTC_t *tc)
- * @brief       Function that verifies a received TC has not been corrupted
- * @param[in]   tc TC from which the CRC will be checked
- * @retval      #RET_ERROR if the computed CRC is different than the received CRC
- * @retval      #RET_SUCCESSFUL else
- */
-static returnCode_t CheckCRC(pusTC_t *tc)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
-    pusCRC_t reiceved_crc     = (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 0u] << 8u)
-                            + (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 1u]);
-    pusCRC_t computed_crc = 0u;
-
-    // Compute the TC's CRC
-    computed_crc = computeCRC((uint8_t *)tc, data_size + SPP_HEADER_SIZE - CRC_TRAILER_SIZE);
-    if (computed_crc != reiceved_crc)
-    {
-        return_value = RET_ERROR;
     }
 
     return return_value;

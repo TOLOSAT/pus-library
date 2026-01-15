@@ -47,18 +47,43 @@ typedef struct
 
 /*************************** Functions Declarations **************************/
 
+static returnCode_t CheckCRC(pusTC_t *tc);
 static returnCode_t FindTCHeader(const rxBuffer_t *rx, size_t *header_offset);
 static returnCode_t ExtractTCLength(rxBuffer_t *rx, size_t start, uint16_t *length);
 static returnCode_t HasFullTC(rxBuffer_t *rx, size_t start, size_t length);
-static returnCode_t VerifyCRC(rxBuffer_t *rx, size_t start, size_t length);
-static returnCode_t ParseOneTC(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state);
-static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state);
+static returnCode_t ParseOneTC(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state, pusAcceptanceError_t *error);
+static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, pusAcceptanceError_t *error);
 static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAcceptanceError_t *error);
 static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error);
 
 /*************************** Variables Definitions ***************************/
 
 /*************************** Functions Definitions ***************************/
+
+/**
+ * @fn          CheckCRC(pusTC_t *tc)
+ * @brief       Function that verifies a received TC has not been corrupted
+ * @param[in]   tc TC from which the CRC will be checked
+ * @retval      #RET_ERROR if the computed CRC is different than the received CRC
+ * @retval      #RET_SUCCESSFUL else
+ */
+static returnCode_t CheckCRC(pusTC_t *tc)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
+    pusCRC_t reiceved_crc     = (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 0u] << 8u)
+                            + (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 1u]);
+    pusCRC_t computed_crc = 0u;
+
+    // Compute the TC's CRC
+    computed_crc = computeCRC((uint8_t *)tc, data_size + SPP_HEADER_SIZE - CRC_TRAILER_SIZE);
+    if (computed_crc != reiceved_crc)
+    {
+        return_value = RET_ERROR;
+    }
+
+    return return_value;
+}
 
 /**
  * @fn          CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAcceptanceError_t *error)
@@ -73,35 +98,45 @@ static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAccep
     returnCode_t return_value = RET_SUCCESSFUL;
     uint16_t packet_id        = HALF_WORD_BYTE_SWAP(tc_packet_id);
 
-    // Check Packet Version Number
-    if (((packet_id & PACKET_VERSION_NUMBER_MASK) >> PACKET_VERSION_NUMBER_OFFSET) == PACKET_VERSION_NUMBER)
+    if (error != NULL)
     {
-        // Check Packet Type
-        if (((packet_id & PACKET_TYPE_MASK) >> PACKET_TYPE_OFFSET) == TC_TYPE)
+        // Check Packet Version Number
+        if (((packet_id & PACKET_VERSION_NUMBER_MASK) >> PACKET_VERSION_NUMBER_OFFSET) == PACKET_VERSION_NUMBER)
         {
-            // Check Secondary Header Presence
-            if (((packet_id & HEADER_PRESENCE_MASK) >> HEADER_PRESENCE_OFFSET) != HEADER_PRESENT)
+            // Check Packet Type
+            if (((packet_id & PACKET_TYPE_MASK) >> PACKET_TYPE_OFFSET) == TC_TYPE)
             {
-                return_value = RET_INVALID_PARAM;
-                *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+                // Check Secondary Header Presence
+                if (((packet_id & HEADER_PRESENCE_MASK) >> HEADER_PRESENCE_OFFSET) == HEADER_PRESENT)
+                {
+                    // All checks passed
+                    return_value = RET_SUCCESSFUL;
+                    *error       = PUS_ACCEPTANCE_NO_ERROR;
+                }
+                else
+                {
+                    // Secondary Header not present
+                    return_value = RET_ERROR;
+                    *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+                }
             }
-            // TODO : check PUS version in secondary header
             else
             {
-                return_value = RET_INVALID_PARAM;
+                // Wrong Packet Type
+                return_value = RET_ERROR;
                 *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
             }
         }
         else
         {
-            return_value = RET_INVALID_PARAM;
+            // Wrong Packet Version
+            return_value = RET_ERROR;
             *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
         }
     }
     else
     {
         return_value = RET_INVALID_PARAM;
-        *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
     }
 
     return return_value;
@@ -118,42 +153,61 @@ static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAccep
 static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
-    uint16_t packet_id        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_id);
-    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
-    uint8_t pus_version       = tc->tc_header.version_flags;
 
-    return_value = CheckTCPacketIdValidity(tc->spp_header.packet_id, error);
-
-    if (return_value == RET_SUCCESSFUL)
+    if (tc != NULL && error != NULL)
     {
-        // Check Size
-        if (data_size >= (TC_HEADER_SIZE + CRC_TRAILER_SIZE))
+        uint16_t packet_id  = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_id);
+        uint16_t data_size  = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
+        uint8_t pus_version = tc->tc_header.version_flags;
+
+        return_value = CheckTCPacketIdValidity(tc->spp_header.packet_id, error);
+
+        if (return_value == RET_SUCCESSFUL)
         {
-            // Check PUS version number
-            if (((pus_version & PUS_VERSION_NUMBER_MASK) >> PUS_VERSION_NUMBER_OFFSET) == PUS_VERSION_NUMBER)
+            // Check Size
+            if (data_size > (SPP_HEADER_SIZE + TC_HEADER_SIZE + CRC_TRAILER_SIZE) && data_size <= TC_MAX_SIZE)
             {
-                // Check CRC
-                if (CheckCRC(tc) != RET_SUCCESSFUL)
+                // Check PUS version number
+                if (((pus_version & PUS_VERSION_NUMBER_MASK) >> PUS_VERSION_NUMBER_OFFSET) == PUS_VERSION_NUMBER)
                 {
-                    return_value = RET_INVALID_PARAM;
-                    *error       = PUS_ACCEPTANCE_INVALID_CRC;
+                    // Check CRC
+                    if (CheckCRC(tc) == RET_SUCCESSFUL)
+                    {
+                        // All checks passed
+                        return_value = RET_SUCCESSFUL;
+                        *error       = PUS_ACCEPTANCE_NO_ERROR;
+                    }
+                    else
+                    {
+                        // CRC invalid
+                        return_value = RET_ERROR;
+                        *error       = PUS_ACCEPTANCE_INVALID_CRC;
+                    }
+                }
+                else
+                {
+                    // Wrong PUS version
+                    return_value = RET_ERROR;
+                    *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
                 }
             }
             else
             {
-                return_value = RET_INVALID_PARAM;
+                // Size too small or too large
+                return_value = RET_ERROR;
                 *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
             }
         }
         else
         {
-            return_value = RET_INVALID_PARAM;
-            *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+            // Packet ID invalid
+            return_value = RET_ERROR;
+            // error already set in CheckTCPacketIdValidity
         }
     }
     else
     {
-        *error = PUS_ACCEPTANCE_INVALID_FORMAT;
+        return_value = RET_INVALID_PARAM;
     }
 
     return return_value;
@@ -173,10 +227,12 @@ static returnCode_t FindTCHeader(const rxBuffer_t *rx, size_t *header_offset)
     size_t header_offset_tmp  = (size_t)-1;
 
     // Try to find an header until we reach the write index
-    while (i != rx->write_index)
+    while (i != rx->write_index && header_offset_tmp == (size_t)-1)
     {
         sppPacketId_t packet_id = HALF_WORD_BYTE_SWAP(((uint16_t)rx->data[i] << 8) | rx->data[(i + 1) % RX_BUFFER_SIZE]);
-        if (CheckTCPacketIdValidity(packet_id, NULL) == RET_SUCCESSFUL)
+
+        pusAcceptanceError_t error; // Dummy variable, we don't need the error here
+        if (CheckTCPacketIdValidity(packet_id, &error) == RET_SUCCESSFUL)
         {
             header_offset_tmp = (i - rx->read_index + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
         }
@@ -236,56 +292,49 @@ static returnCode_t HasFullTC(rxBuffer_t *rx, size_t start, size_t length)
  * @brief
  *
  * @param rx the RX buffer
- * @param start start index of the TC
- * @param length total declared TC length
- * @return returnCode_t
- */
-static returnCode_t VerifyCRC(rxBuffer_t *rx, size_t start, size_t length)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-
-    uint16_t crc_calc = computeCRC(&rx->data[start], length - CRC_TRAILER_SIZE);
-    uint16_t crc_recv =
-        ((uint16_t)rx->data[(start + length - CRC_TRAILER_SIZE) % RX_BUFFER_SIZE] << 8) | rx->data[(start + length - 1) % RX_BUFFER_SIZE];
-
-    if (crc_calc != crc_recv)
-    {
-        return_value = RET_ERROR;
-    }
-
-    return return_value;
-}
-
-/**
- * @brief
- *
- * @param rx the RX buffer
  * @param tc the TC frame structure to fill
  * @param state pointer to store the TC state
  * @return returnCode_t
  */
-static returnCode_t ParseOneTC(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state)
+static returnCode_t ParseOneTC(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state, pusAcceptanceError_t *error)
 {
-    tc->start = rx->read_index;
-    ExtractTCLength(rx, tc->start, &tc->length);
+    returnCode_t return_value = RET_SUCCESSFUL;
 
-    returnCode_t has_full_tc = HasFullTC(rx, tc->start, tc->length);
+    if (rx != NULL && tc != NULL && state != NULL && error != NULL)
+    {
+        tc->start = rx->read_index;
+        ExtractTCLength(rx, tc->start, &tc->length);
 
-    // TODO: not sure about the pusTc_t cast here
-    if (has_full_tc == RET_SUCCESSFUL && CheckTCValidity((pusTC_t *)&rx->data[tc->start], PUS_ACCEPTANCE_NO_ERROR) == RET_SUCCESSFUL)
-    {
-        *state = TC_STATE_VALID;
-    }
-    else if (has_full_tc == RET_ERROR)
-    {
-        *state = TC_STATE_PARTIAL;
+        returnCode_t has_full_tc = HasFullTC(rx, tc->start, tc->length);
+
+        // Linearize the circular buffer
+        uint8_t tmp[MAX_TC_SIZE];
+        for (i = 0; i < tc->length; i++)
+        {
+            tmp[i] = rx->data[(tc->start + i) % RX_BUFFER_SIZE];
+        }
+
+        returnCode_t is_tc_valid = CheckTCValidity((pusTC_t *)tmp, error);
+
+        if (has_full_tc == RET_SUCCESSFUL && is_tc_valid == RET_SUCCESSFUL)
+        {
+            *state = TC_STATE_VALID;
+        }
+        else if (has_full_tc == RET_ERROR)
+        {
+            *state = TC_STATE_PARTIAL;
+        }
+        else
+        {
+            *state = TC_STATE_INVALID;
+        }
     }
     else
     {
-        *state = TC_STATE_INVALID;
+        return_value = RET_INVALID_PARAM;
     }
 
-    return RET_SUCCESSFUL;
+    return return_value;
 }
 
 /**
@@ -293,17 +342,17 @@ static returnCode_t ParseOneTC(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state)
  * @brief       Function that parse the RX buffer to extract TCs
  * @param[in]   rx_buffer Pointer to the RX buffer structure
  * @param[out]  tc Pointer to the TC frame structure to fill
- * @param[out]  acceptance_error Pointer to store the TC acceptance error code
+ * @param[out]  error Pointer to store the TC acceptance error code
  * @retval      #RET_INVALID_PARAM if a pointer is null
  * @retval      #RET_ERROR if parsing failed
  * @retval      #RET_SUCCESSFUL else
  */
-static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, ACCEPTANCE_ERROR *acceptance_error)
+static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, pusAcceptanceError_t *error)
 {
-    returnCode_t ret  = RET_SUCCESSFUL;
-    *acceptance_error = PUS_ACCEPTANCE_NO_ERROR;
+    returnCode_t ret = RET_SUCCESSFUL;
+    *error           = PUS_ACCEPTANCE_NO_ERROR;
 
-    if ((rx != NULL) && (tc != NULL))
+    if ((rx != NULL) && (tc != NULL) && (error != NULL))
     {
         size_t header_offset = 0u;
         ret                  = FindTCHeader(rx, &header_offset);
@@ -314,11 +363,12 @@ static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, ACCEPTANCE_ERROR 
             rx->read_index = (rx->read_index + header_offset) % RX_BUFFER_SIZE;
 
             // Try to parse a TC from here
-            ret = ParseOneTC(rx, tc, state);
+            tcState_t state = TC_STATE_INVALID;
+            ret             = ParseOneTC(rx, tc, &state, error);
 
             if (ret == RET_SUCCESSFUL)
             {
-                if ((*state == TC_STATE_VALID) || (*state == TC_STATE_INVALID))
+                if ((state == TC_STATE_VALID) || (state == TC_STATE_INVALID))
                 {
                     // Advance read pointer if TC is full (valid or invalid)
                     rx->read_index = (rx->read_index + tc->length) % RX_BUFFER_SIZE;
@@ -326,22 +376,22 @@ static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, ACCEPTANCE_ERROR 
                 else
                 {
                     // Partial TC, header OK but not complete
-                    *acceptance_error = PUS_ACCEPTANCE_INVALID_FORMAT;
-                    ret               = RET_NOT_AVAILABLE;
+                    *error = PUS_ACCEPTANCE_INVALID_FORMAT;
+                    ret    = RET_NOT_AVAILABLE;
                 }
             }
             else
             {
-                // The parsing is not successful so the CRC is invalid
-                *acceptance_error = PUS_ACCEPTANCE_INVALID_CRC;
+                // The parsing is not successful
+                // error is already set in ParseOneTC
             }
         }
         else
         {
             // No header found, so no TC at all, advance to the write index
             // because there is nothing usable between the read index and the write index.
-            rx->read_index    = rx->write_index;
-            *acceptance_error = PUS_ACCEPTANCE_CANT_FORMAT;
+            rx->read_index = rx->write_index;
+            *error         = PUS_ACCEPTANCE_CANT_FORMAT;
         }
     }
     else
