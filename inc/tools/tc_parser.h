@@ -27,11 +27,22 @@
 
 /***************************** Types Definitions *****************************/
 
+/**
+ * @struct pusParsingContext_t
+ * @brief Context structure for TC parsing
+ */
+typedef struct
+{
+    uint8_t *p_buffer;    /**< @brief Pointer to data buffer */
+    length_t buffer_size; /**< @brief Size of the buffer */
+    length_t read_index;  /**< @brief Current read index in the RX buffer */
+    length_t write_index; /**< @brief Current write index in the RX buffer */
+} pusParsingContext_t;
+
 /*************************** Variables Declarations **************************/
 
 /*************************** Functions Declarations **************************/
-
-extern static returnCode_t ParseBuffer(rxBuffer_t *rx, tcFrame_t *tc, tcState_t *state);
+extern returnCode_t ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceError_t *error);
 
 #endif /* TC_PARSER_H */
 

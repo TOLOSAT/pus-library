@@ -16,13 +16,13 @@
 #include "tools/schedule_management.h"
 #include "tools/crc_computation.h"
 #include "services/pus1.h"
+#include "tools/tc_parser.h"
 
 /***************************** Macros Definitions ****************************/
 
 /*************************** Functions Declarations **************************/
 
 static returnCode_t FormatTC(pusTC_t *tc);
-static void EraseTC(pusTC_t *tc);
 static returnCode_t SendAcptAckTM(const pusTC_t *tc, pusTM_t *acceptance_tm, deviceNo_t dev_ack);
 static returnCode_t SendAcptNackTM(const pusTC_t *tc, pusTM_t *acceptance_tm, deviceNo_t dev_ack, pusAcceptanceError_t acceptance_error);
 static returnCode_t SendExecAckTM(const pusTC_t *tc, pusTM_t *execution_tm, deviceNo_t dev_ack);
@@ -36,7 +36,9 @@ static returnCode_t SendExecNackTM(const pusTC_t *tc, pusTM_t *execution_tm, dev
  * @fn          InitTCReceiveContext(pusReceiveContext_t *receive_context)
  * @brief       Function that initialise the receive context for TC handling
  * @param[in]   receive_context Execution context for the task dealing with TC execution
- * @retval      #RET_INVALID_PARAM if a pointer is a null pointer or routing table size is null
+ * @retval      #RET_INVALID_PARAM if a pointer is a null pointer
+ * @retval      #RET_INVALID_PARAM if routing table size is zero
+ * @retval      #RET_INVALID_PARAM if PUS receive buffer size is smaller than TC max size
  * @retval      #RET_ERROR if initialisation failed because of device binding or execution table initialisation
  * @retval      #RET_SUCCESSFUL else
  */
@@ -47,7 +49,7 @@ returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context)
 
     // Check parameter(s)
     if ((receive_context != NULL) && (receive_context->routing_table.entries != NULL) && (receive_context->routing_table.size != 0u)
-        && (receive_context->tc != NULL))
+        && (receive_context->rx_buffer != NULL) && (receive_context->rx_buffer_size > TC_MAX_SIZE))
     {
         // First initialise the routing table
         return_value = InitRoutingTable(&receive_context->routing_table);
@@ -65,7 +67,8 @@ returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context)
             // Start reception for the RX device if is a peripheral
             if ((device_status == RET_SUCCESSFUL) && (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL))
             {
-                device_status = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_START_RX, receive_context->tc, TC_MAX_SIZE);
+                device_status =
+                    DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_START_RX, receive_context->rx_buffer, receive_context->rx_buffer_size);
             }
 
             // Finally check everything went right
@@ -108,7 +111,8 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
     returnCode_t return_value             = RET_SUCCESSFUL;
     pusTM_t acceptance_tm                 = { 0 };
     pusAcceptanceError_t acceptance_error = PUS_ACCEPTANCE_NO_ERROR;
-    pusTC_t *tc                           = receive_context->tc; // Renaming for easier usage
+    length_t write_index                  = 0u;
+    pusTC_t tc                            = { 0 };
 
     // Check parameter(s)
     if (receive_context->status == PUS_CONTEXT_INITIALIZED)
@@ -116,38 +120,49 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
         // First, check if a new TC has been received
         if (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL)
         {
-            return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_CHECK_RX, NULL, 0u);
+            // Check write index
+            return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_UART_GET_RX_COUNTER, &write_index, sizeof(length_t));
         }
         else
         {
-            return_value = DeviceRead(receive_context->dev_rx, (data_t)tc, TC_MAX_SIZE);
+            // TODO: trouver une astuce pour copier la queue en provenance du TC receiver dans le buffer
+            // return_value = DeviceRead(receive_context->dev_rx, (data_t)tc, TC_MAX_SIZE);
         }
 
-        // If yes, preprocess the TC
-        if (return_value == RET_SUCCESSFUL)
+        // While there is new data in the RX buffer, try to parse TCs
+        while (return_value == RET_SUCCESSFUL && write_index != receive_context->read_index)
         {
+            pusParsingContext_t tc_parsing_context = {
+                .p_buffer    = receive_context->rx_buffer,
+                .buffer_size = receive_context->rx_buffer_size,
+                .read_index  = receive_context->read_index,
+                .write_index = write_index,
+            };
             // First, check the validity of the TC.
-            return_value = CheckTCValidity(tc, &acceptance_error);
+            return_value = ParseBuffer(&tc_parsing_context, &tc, &acceptance_error);
             if (return_value == RET_SUCCESSFUL)
             {
+                // Update read index in the receive context
+                receive_context->read_index = tc_parsing_context.read_index;
+
                 // If TC is valid, format the TC because of endianness.
-                return_value = FormatTC(tc);
+                return_value = FormatTC(&tc);
                 if (return_value == RET_SUCCESSFUL)
                 {
                     pusRoutingTableEntry_t *p_entry = NULL;
 
                     // Compute the routing key
-                    uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc->spp_header.packet_id), tc->tc_header.service, tc->tc_header.subservice);
+                    uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc.spp_header.packet_id), tc.tc_header.service, tc.tc_header.subservice);
 
                     // Then, route the TC toward the task that will execute it.
                     return_value = RouteSearch(key, &receive_context->routing_table, &p_entry);
                     if (return_value == RET_SUCCESSFUL)
                     {
                         // Acknowledge TC
-                        (void)SendAcptAckTM(tc, &acceptance_tm, receive_context->dev_ack);
+                        (void)SendAcptAckTM(&tc, &acceptance_tm, receive_context->dev_ack);
 
                         // Send TC to the task that will execute it
-                        return_value = DeviceWrite(p_entry->dev_route, (data_t)tc, TC_MAX_SIZE);
+                        return_value = DeviceWrite(p_entry->dev_route, (data_t)&tc, TC_MAX_SIZE);
                         if (return_value == RET_SUCCESSFUL)
                         {
                             taskNo_t tc_processor = NO_TASK;
@@ -161,28 +176,26 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
                     else
                     {
                         // Bad routing so TC non acknowleded
-                        (void)SendAcptNackTM(tc, &acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_INVALID_ROUTE);
+                        (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_INVALID_ROUTE);
                     }
                 }
                 else
                 {
                     // Can't format so TC non acknowleded
-                    (void)SendAcptNackTM(tc, &acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_CANT_FORMAT);
+                    (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_CANT_FORMAT);
                 }
+            }
+            else if (return_value == RET_NOT_AVAILABLE)
+            {
+                // Do nothing, wait for more data
             }
             else
             {
+                // Update read index to skip bad TC
+                receive_context->read_index = tc_parsing_context.read_index;
+
                 // Invalid TC, TC will be non-acknowledged.
-                (void)SendAcptNackTM(tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
-            }
-
-            // Erasing TC for next call;
-            EraseTC(tc);
-
-            // Listen for a new TC when using a peripheral
-            if (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL)
-            {
-                return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_START_RX, receive_context->tc, TC_MAX_SIZE);
+                (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
             }
         }
     }
@@ -368,17 +381,6 @@ static returnCode_t FormatTC(pusTC_t *tc)
     }
 
     return return_value;
-}
-
-/**
- * @fn              EraseTC(pusTC_t *tc)
- * @brief           Function that erase a TC, it fills it with zeros
- * @param[in,out]   tc Tc to erase
- * @return          Nothing
- */
-static void EraseTC(pusTC_t *tc)
-{
-    (void)memset(tc, 0u, TC_MAX_SIZE);
 }
 
 /**
