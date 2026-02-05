@@ -145,7 +145,7 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
                     return_value = RouteSearch(key, &receive_context->routing_table, &p_entry);
                     if (return_value == RET_SUCCESSFUL)
                     {
-                        // Acknowledge TC
+                        // Acknowledge TC Acceptation
                         if ((tc->tc_header.version_flags & PUS_FLAG_ACK_ACC) == PUS_FLAG_ACK_ACC) {
                             (void)SendAcptAckTM(tc, &acceptance_tm, receive_context->dev_ack);
                         }
@@ -296,7 +296,7 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
                 return_value                   = p_entry->execution_function(p_entry->env, &tc, &tm, &error_code);
                 if (return_value == RET_SUCCESSFUL)
                 {
-                    // Acknowledge TC execution
+                    // Acknowledge TC Completion
                     if ((tc.tc_header.version_flags & PUS_FLAG_ACK_COMPL) == PUS_FLAG_ACK_COMPL) {
                         (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
                     }
