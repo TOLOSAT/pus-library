@@ -66,6 +66,12 @@
 #define PUS_VERSION_NUMBER_OFFSET    4u    /**< Offset to access PUS version number */
 #define PUS_VERSION_NUMBER           2u    /**< Valid PUS version number (2 : ECSS-E-ST-70-41C)*/
 
+/* PUS Flag Acknowledgement Constant  */
+#define PUS_FLAG_ACK_COMPL       0x01u /**< Bit mask to access Flag Acknowledgement of Successful Completion */
+#define PUS_FLAG_ACK_PROG        0x02u /**< Bit mask to access Flag Acknowledgement of Successful Progresssion */
+#define PUS_FLAG_ACK_START       0x04u /**< Bit mask to access Flag Acknowledgement of Successful Start */
+#define PUS_FLAG_ACK_ACC         0x08u /**< Bit mask to access Flag Acknowledgemebt of Successful Acceptance */
+
 /************************************/
 /******* ACCEPTANCE CONSTANTS *******/
 /************************************/
