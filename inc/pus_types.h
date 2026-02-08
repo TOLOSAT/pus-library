@@ -163,6 +163,11 @@ typedef uint8_t pusAcceptanceError_t;
  */
 typedef uint8_t pusExecutionError_t;
 
+/**
+ * @brief PUS N field (used when there is a repetition for data)
+ */
+typedef uint16_t pusNField_t;
+
 #endif /* PUS_TYPES_H */
 
 /**

@@ -283,16 +283,16 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         if (pus11_env->pus11_status == PUS11_ENABLE)
         {
             // Get the N number of data
-            uint16_t N = ((uint16_t)(tc->data[0]) << 8) | ((uint16_t)(tc->data[1]));
-            uint32_t offset = sizeof(uint16_t);
+            pusNField_t N = ((pusNField_t)(tc->data[0]) << 8) | ((pusNField_t)(tc->data[1]));
+            uint32_t offset = sizeof(pusNField_t);
 
             // Get data from TC
-            uint32_t i = 0u;
+            pusNField_t i = 0u;
             while ((return_value == RET_SUCCESSFUL) && (i < N))
             {
                 // First get data i size
-                uint16_t data_i_tc_size = SPP_HEADER_SIZE + (((uint16_t)(tc->data[offset + CUC_TIME_SIZE + 4u]) << 8) | ((uint16_t)(tc->data[offset + CUC_TIME_SIZE + 5u]))) + 1u;
-                uint32_t data_i_size = CUC_TIME_SIZE + data_i_tc_size;
+                uint32_t data_i_tc_size = SPP_HEADER_SIZE + (((uint32_t)(tc->data[offset + sizeof(cucTime_t) + 4u]) << 8) | ((uint32_t)(tc->data[offset + sizeof(cucTime_t) + 5u]))) + 1u; // TO DO : get a proper getter for TC size
+                uint32_t data_i_size = sizeof(cucTime_t) + data_i_tc_size;
 
                 // Copy first TC into a TC data
                 (void)memcpy((void *)&tc_data, (void *)&tc->data[offset], data_i_size);
