@@ -167,6 +167,7 @@ typedef uint8_t pusExecutionError_t;
  * @brief PUS N field (used when there is a repetition for data)
  */
 typedef uint16_t pusNField_t;
+ASSERT_SIZE(pusNField_t, PUS_N_FIELD_SIZE)
 
 #endif /* PUS_TYPES_H */
 

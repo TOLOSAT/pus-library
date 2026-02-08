@@ -25,17 +25,23 @@
 
 /***************************** Macros Definitions ****************************/
 
-#define MEMORY_ID_SIZE           1u                                                                            /**< Memory ID size */
-#define MEMORY_BASE_SIZE         1u                                                                            /**< Memory base size */
-#define MEMORY_OFFSET_SIZE       4u                                                                            /**< Memory offset size */
-#define MEMORY_LENGTH_SIZE       4u                                                                            /**< Memory data length size */
-#define MEMORY_TC_DATA_DUMP_SIZE (MEMORY_ID_SIZE + MEMORY_BASE_SIZE + MEMORY_OFFSET_SIZE + MEMORY_LENGTH_SIZE) /**< Memory TC data dump size */
-#define MEMORY_TC_DATA_LOAD_MAX_SIZE \
-    (TC_MAX_DATA_SIZE - MEMORY_ID_SIZE - MEMORY_BASE_SIZE - MEMORY_OFFSET_SIZE - MEMORY_LENGTH_SIZE) /**< Memory maximum TC data load size */
-#define MEMORY_TM_DATA_DUMP_MAX_SIZE \
-    (TM_MAX_DATA_SIZE - MEMORY_ID_SIZE - MEMORY_BASE_SIZE - MEMORY_OFFSET_SIZE - MEMORY_LENGTH_SIZE) /**< Memory maximum TM data dump size */
+#define MEMORY_BASE_SIZE             2u                                                           /**< Memory base size */
+#define MEMORY_OFFSET_SIZE           4u                                                           /**< Memory offset size */
+#define MEMORY_LENGTH_SIZE           4u                                                           /**< Memory data length size */
+#define MEMORY_TC_DATA_DUMP_SIZE     (MEMORY_OFFSET_SIZE + MEMORY_LENGTH_SIZE)                    /**< Memory TC data dump size */
+#define MEMORY_TC_DATA_LOAD_MAX_SIZE (TC_MAX_DATA_SIZE - MEMORY_OFFSET_SIZE - MEMORY_LENGTH_SIZE) /**< Memory maximum TC data load size */
+#define MEMORY_TM_DATA_DUMP_MAX_SIZE (TM_MAX_DATA_SIZE - MEMORY_OFFSET_SIZE - MEMORY_LENGTH_SIZE) /**< Memory maximum TM data dump size */
 
 /***************************** Types Definitions *****************************/
+
+/** @brief PUS6 base type (file no) */
+typedef uint16_t pus6Base_t;
+
+/** @brief PUS6 offset type */
+typedef uint32_t pus6Offset_t;
+
+/** @brief PUS6 length type */
+typedef uint32_t pus6Length_t;
 
 /**
  * @struct  pusTCLoadDataField_t
@@ -43,10 +49,8 @@
  */
 typedef struct
 {
-    uint8_t memory_id;                          /**< @brief Memory ID (= disk ID) that will be loaded in memory */
-    uint8_t base;                               /**< @brief Data base (= file ref no) that will be loaded in memory */
-    uint32_t offset;                            /**< @brief Data offset in base that will be loaded in memory */
-    uint32_t length;                            /**< @brief Data length that will be loaded in memory */
+    pus6Offset_t offset;                        /**< @brief Data offset in base that will be loaded in memory */
+    pus6Length_t length;                        /**< @brief Data length that will be loaded in memory */
     uint8_t data[MEMORY_TC_DATA_LOAD_MAX_SIZE]; /**< @brief Data that will be loaded in memory */
 } ATTR_BYTE_ALIGNED pusTCLoadDataField_t;
 ASSERT_SIZE(pusTCLoadDataField_t, TC_MAX_DATA_SIZE)
@@ -57,10 +61,8 @@ ASSERT_SIZE(pusTCLoadDataField_t, TC_MAX_DATA_SIZE)
  */
 typedef struct
 {
-    uint8_t memory_id; /**< @brief Memory ID (= disk ID) that will be loaded in memory */
-    uint8_t base;      /**< @brief Data base (= file ref no) that will be loaded in memory */
-    uint32_t offset;   /**< @brief Data offset in base that will be loaded in memory */
-    uint32_t length;   /**< @brief Data length that will be loaded in memory */
+    pus6Offset_t offset; /**< @brief Data offset in base that will be loaded in memory */
+    pus6Length_t length; /**< @brief Data length that will be loaded in memory */
 } ATTR_BYTE_ALIGNED pusTCDumpDataField_t;
 ASSERT_SIZE(pusTCDumpDataField_t, MEMORY_TC_DATA_DUMP_SIZE)
 
@@ -70,10 +72,8 @@ ASSERT_SIZE(pusTCDumpDataField_t, MEMORY_TC_DATA_DUMP_SIZE)
  */
 typedef struct
 {
-    uint8_t memory_id;                          /**< @brief Memory ID (= disk ID) that will be dumped from memory */
-    uint8_t base;                               /**< @brief Data base (= file ref no) that will be dumped from memory */
-    uint32_t offset;                            /**< @brief Data offset in base that will be dumped from memory */
-    uint32_t length;                            /**< @brief Data length that will be dumped from memory */
+    pus6Offset_t offset;                        /**< @brief Data offset in base that will be dumped from memory */
+    pus6Length_t length;                        /**< @brief Data length that will be dumped from memory */
     uint8_t data[MEMORY_TM_DATA_DUMP_MAX_SIZE]; /**< @brief Data that will be dumped from memory */
 } ATTR_BYTE_ALIGNED pusTMDumpDataField_t;
 ASSERT_SIZE(pusTMDumpDataField_t, TM_MAX_DATA_SIZE)

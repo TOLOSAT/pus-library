@@ -48,36 +48,59 @@ returnCode_t ExecuteS6SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
     // Check parameter(s)
     if ((tc != NULL) && (error_code != NULL))
     {
+        deviceNo_t temp_dev = 0u;
+        pus6Base_t base     = 0u;
+        pusNField_t N       = 0u;
+        uint32_t offset     = sizeof(pus6Base_t) + sizeof(pusNField_t);
+
         // Error code Initialization
         *error_code = PUS_EXECUTION_NO_ERROR;
 
-        // First get data from TC
-        (void)memcpy((void *)&load_data, (void *)tc->data, TC_MAX_DATA_SIZE);
-        // Swip Endianness
-        load_data.offset = WORD_BYTE_SWAP(load_data.offset);
-        load_data.length = WORD_BYTE_SWAP(load_data.length);
+        // Get base and N (number of data)
+        BIG_ENDIAN_ARRAY_TO_UINT16(tc->data, base);
+        BIG_ENDIAN_ARRAY_TO_UINT16(&tc->data[sizeof(pus6Base_t)], N);
 
         // First open a device for this file
-        deviceNo_t temp_dev  = 0u;
-        returnCode_t test_fs = DeviceOpen(&temp_dev, DEVICE_TYPE_FILE, load_data.base);
+        returnCode_t test_fs = DeviceOpen(&temp_dev, DEVICE_TYPE_FILE, base);
         if (test_fs == RET_SUCCESSFUL)
         {
-            // Move read/write pointer
-            test_fs = DeviceIoctl(temp_dev, IOCTL_FS_SEEK, &load_data.offset, sizeof(load_data.offset));
-            if (test_fs == RET_SUCCESSFUL)
+            // Get data from TC
+            pusNField_t i = 0u;
+            while ((return_value == RET_SUCCESSFUL) && (i < N))
             {
-                // Write data into FS
-                test_fs = DeviceWrite(temp_dev, load_data.data, load_data.length);
-                if (test_fs != RET_SUCCESSFUL)
+                // First get data i size
+                uint32_t data_i_dump_size;
+                BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset + sizeof(pus6Offset_t)], data_i_dump_size);
+                uint32_t data_i_size = sizeof(pus6Offset_t) + sizeof(pus6Length_t) + data_i_dump_size;
+
+                // Get data from TC
+                (void)memcpy((void *)&load_data, (void *)&tc->data[offset], data_i_size);
+
+                // Swip Endianness
+                load_data.offset = WORD_BYTE_SWAP(load_data.offset);
+                load_data.length = WORD_BYTE_SWAP(load_data.length);
+
+                // Move read/write pointer
+                test_fs = DeviceIoctl(temp_dev, IOCTL_FS_SEEK, &load_data.offset, sizeof(load_data.offset));
+                if (test_fs == RET_SUCCESSFUL)
+                {
+                    // Write data into FS
+                    test_fs = DeviceWrite(temp_dev, load_data.data, load_data.length);
+                    if (test_fs != RET_SUCCESSFUL)
+                    {
+                        return_value = RET_ERROR;
+                        *error_code  = PUS_EXECUTION_FAILED;
+                    }
+                }
+                else
                 {
                     return_value = RET_ERROR;
                     *error_code  = PUS_EXECUTION_FAILED;
                 }
-            }
-            else
-            {
-                return_value = RET_ERROR;
-                *error_code  = PUS_EXECUTION_FAILED;
+
+                // Update index and offset
+                offset += data_i_size;
+                i++;
             }
 
             // Then close the device anyway (to avoid blocking the resource)
@@ -125,6 +148,10 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
         // Error code Initialization
         *error_code = PUS_EXECUTION_NO_ERROR;
 
+        // Get the N number of data
+        pus6Base_t base;
+        BIG_ENDIAN_ARRAY_TO_UINT16(tc->data, base);
+
         // First get data from TC
         (void)memcpy((void *)&requested_data, (void *)tc->data, MEMORY_TC_DATA_DUMP_SIZE);
         // Swip Endianness
@@ -133,7 +160,7 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
 
         // First open a device for this file
         deviceNo_t temp_dev  = 0u;
-        returnCode_t test_fs = DeviceOpen(&temp_dev, DEVICE_TYPE_FILE, requested_data.base);
+        returnCode_t test_fs = DeviceOpen(&temp_dev, DEVICE_TYPE_FILE, base);
         if (test_fs == RET_SUCCESSFUL)
         {
             // Move read/write pointer
@@ -145,8 +172,6 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
                 if (test_fs == RET_SUCCESSFUL)
                 {
                     // Update data an build TM
-                    dumped_data.memory_id   = requested_data.memory_id;
-                    dumped_data.base        = requested_data.base;
                     dumped_data.offset      = requested_data.offset;
                     dumped_data.length      = requested_data.length;
                     returnCode_t test_build = BuildS6SS4(tm, &dumped_data);
@@ -208,7 +233,7 @@ static returnCode_t BuildS6SS4(pusTM_t *tm, pusTMDumpDataField_t *memory_dump)
     if ((tm != NULL) && (memory_dump != NULL))
     {
         // Compute size
-        uint16_t data_size = MEMORY_ID_SIZE + MEMORY_BASE_SIZE + MEMORY_OFFSET_SIZE + MEMORY_LENGTH_SIZE + memory_dump->length;
+        uint16_t data_size = MEMORY_BASE_SIZE + MEMORY_OFFSET_SIZE + MEMORY_LENGTH_SIZE + memory_dump->length;
 
         // Swip Endianness
         memory_dump->offset = WORD_BYTE_SWAP(memory_dump->offset);

@@ -41,6 +41,8 @@
 #define TC_MAX_DATA_SIZE             (TC_MAX_SIZE - SPP_HEADER_SIZE - TC_HEADER_SIZE - CRC_TRAILER_SIZE) /**< Maximum Size for TC data */
 #define TM_MAX_DATA_SIZE             (TM_MAX_SIZE - SPP_HEADER_SIZE - TM_HEADER_SIZE - CRC_TRAILER_SIZE) /**< Maximum Size for TM data */
 
+#define PUS_N_FIELD_SIZE             2u /**< Maximum Size for an N field (used for repetitions) */
+
 /* CUC Time constant */
 #define CUC_HEAD_SIZE                1u                                                  /**< CUC header size */
 #define COARSE_TIME_SIZE             4u                                                  /**< Coarse time size */

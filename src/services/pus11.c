@@ -283,7 +283,7 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         if (pus11_env->pus11_status == PUS11_ENABLE)
         {
             // Get the N number of data
-            pusNField_t N = ((pusNField_t)(tc->data[0]) << 8) | ((pusNField_t)(tc->data[1]));
+            pusNField_t N   = ((pusNField_t)(tc->data[0]) << 8) | ((pusNField_t)(tc->data[1]));
             uint32_t offset = sizeof(pusNField_t);
 
             // Get data from TC
@@ -291,7 +291,10 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
             while ((return_value == RET_SUCCESSFUL) && (i < N))
             {
                 // First get data i size
-                uint32_t data_i_tc_size = SPP_HEADER_SIZE + (((uint32_t)(tc->data[offset + sizeof(cucTime_t) + 4u]) << 8) | ((uint32_t)(tc->data[offset + sizeof(cucTime_t) + 5u]))) + 1u; // TO DO : get a proper getter for TC size
+                uint32_t data_i_tc_size =
+                    SPP_HEADER_SIZE
+                    + (((uint32_t)(tc->data[offset + sizeof(cucTime_t) + 4u]) << 8) | ((uint32_t)(tc->data[offset + sizeof(cucTime_t) + 5u])))
+                    + 1u; // TO DO : get a proper getter for TC size
                 uint32_t data_i_size = sizeof(cucTime_t) + data_i_tc_size;
 
                 // Copy first TC into a TC data
