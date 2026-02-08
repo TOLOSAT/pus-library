@@ -282,45 +282,62 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         // Check if PUS11 is enable
         if (pus11_env->pus11_status == PUS11_ENABLE)
         {
+            // Get the N number of data
+            uint16_t N = ((uint16_t)(tc->data[0]) << 8) | ((uint16_t)(tc->data[1]));
+            uint32_t offset = sizeof(uint16_t);
+
             // Get data from TC
-            (void)memcpy((void *)&tc_data, (void *)tc->data, TC_MAX_DATA_SIZE);
-
-            // Get Current time
-            time_t current_time = GetTime();
-            // Check if requested timestamp is in the futur
-            time_t tc_timestamp = ((uint64_t)(tc_data.timestamp.time_header) << 56) | ((uint64_t)(tc_data.timestamp.coarse_time[0]) << 48)
-                                  | ((uint64_t)(tc_data.timestamp.coarse_time[1]) << 40) | ((uint64_t)(tc_data.timestamp.coarse_time[2]) << 32)
-                                  | ((uint64_t)(tc_data.timestamp.coarse_time[3]) << 24) | ((uint64_t)(tc_data.timestamp.fine_time[0]) << 16)
-                                  | ((uint64_t)(tc_data.timestamp.fine_time[1]) << 8) | ((uint64_t)(tc_data.timestamp.fine_time[2]));
-            if (current_time <= tc_timestamp)
+            uint32_t i = 0u;
+            while ((return_value == RET_SUCCESSFUL) && (i < N))
             {
-                pus11DataTableInfo_t pus11_table_info = { 0 };
-                // Check if there is still data available
-                return_value = GetInfoFromTable(pus11_env, &pus11_table_info);
-                if ((return_value == RET_SUCCESSFUL) && (pus11_table_info.nb_data < PUS11_MAXIMUM_DATA))
-                {
-                    pus11DataIndex_t new_data_index = 0u;
-                    // Get a data slot
-                    return_value = GetAvailableData(pus11_env, &new_data_index);
-                    if (return_value == RET_SUCCESSFUL)
-                    {
-                        // Put incomming data in data struct
-                        pus11Data_t pus11_data = { 0 };
-                        (void)memcpy((void *)&pus11_data.raw_data, (void *)tc_data.data, PUS11_ACTIVITY_DATA_MAX_SIZE);
-                        pus11_data.status = PUS11_DATA_UNAVAILABLE;
+                // First get data i size
+                uint16_t data_i_tc_size = SPP_HEADER_SIZE + (((uint16_t)(tc->data[offset + CUC_TIME_SIZE + 4u]) << 8) | ((uint16_t)(tc->data[offset + CUC_TIME_SIZE + 5u]))) + 1u;
+                uint32_t data_i_size = CUC_TIME_SIZE + data_i_tc_size;
 
-                        // Send data to file
-                        return_value = SetDataFromTable(pus11_env, &pus11_data, new_data_index);
+                // Copy first TC into a TC data
+                (void)memcpy((void *)&tc_data, (void *)&tc->data[offset], data_i_size);
+
+                // Get Current time
+                time_t current_time = GetTime();
+                // Check if requested timestamp is in the futur
+                time_t tc_timestamp = ((uint64_t)(tc_data.timestamp.time_header) << 56) | ((uint64_t)(tc_data.timestamp.coarse_time[0]) << 48)
+                                      | ((uint64_t)(tc_data.timestamp.coarse_time[1]) << 40) | ((uint64_t)(tc_data.timestamp.coarse_time[2]) << 32)
+                                      | ((uint64_t)(tc_data.timestamp.coarse_time[3]) << 24) | ((uint64_t)(tc_data.timestamp.fine_time[0]) << 16)
+                                      | ((uint64_t)(tc_data.timestamp.fine_time[1]) << 8) | ((uint64_t)(tc_data.timestamp.fine_time[2]));
+                if (current_time <= tc_timestamp)
+                {
+                    pus11DataTableInfo_t pus11_table_info = { 0 };
+                    // Check if there is still data available
+                    return_value = GetInfoFromTable(pus11_env, &pus11_table_info);
+                    if ((return_value == RET_SUCCESSFUL) && (pus11_table_info.nb_data < PUS11_MAXIMUM_DATA))
+                    {
+                        pus11DataIndex_t new_data_index = 0u;
+                        // Get a data slot
+                        return_value = GetAvailableData(pus11_env, &new_data_index);
                         if (return_value == RET_SUCCESSFUL)
                         {
-                            // Create Activity based on TC data
-                            pusActivity_t activity = { 0 };
-                            activity.timestamp     = tc_timestamp;
-                            activity.data          = new_data_index;
+                            // Put incomming data in data struct
+                            pus11Data_t pus11_data = { 0 };
+                            (void)memcpy((void *)&pus11_data.raw_data, (void *)tc_data.data, PUS11_ACTIVITY_DATA_MAX_SIZE);
+                            pus11_data.status = PUS11_DATA_UNAVAILABLE;
 
-                            // Insert activity in schedule
-                            return_value = PushActivityInSchedule(pus11_env->dev_pus11_schedule, &activity);
-                            if (return_value != RET_SUCCESSFUL)
+                            // Send data to file
+                            return_value = SetDataFromTable(pus11_env, &pus11_data, new_data_index);
+                            if (return_value == RET_SUCCESSFUL)
+                            {
+                                // Create Activity based on TC data
+                                pusActivity_t activity = { 0 };
+                                activity.timestamp     = tc_timestamp;
+                                activity.data          = new_data_index;
+
+                                // Insert activity in schedule
+                                return_value = PushActivityInSchedule(pus11_env->dev_pus11_schedule, &activity);
+                                if (return_value != RET_SUCCESSFUL)
+                                {
+                                    *error_code = PUS_EXECUTION_FAILED;
+                                }
+                            }
+                            else
                             {
                                 *error_code = PUS_EXECUTION_FAILED;
                             }
@@ -337,13 +354,13 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
                 }
                 else
                 {
-                    *error_code = PUS_EXECUTION_FAILED;
+                    return_value = RET_NOT_AVAILABLE;
+                    *error_code  = PUS_EXECUTION_UNEXPECTED_DATA;
                 }
-            }
-            else
-            {
-                return_value = RET_NOT_AVAILABLE;
-                *error_code  = PUS_EXECUTION_UNEXPECTED_DATA;
+
+                // Update index and offset
+                offset += data_i_size;
+                i++;
             }
         }
         else
