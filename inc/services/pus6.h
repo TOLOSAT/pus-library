@@ -25,12 +25,14 @@
 
 /***************************** Macros Definitions ****************************/
 
-#define MEMORY_BASE_SIZE             2u                                                           /**< Memory base size */
-#define MEMORY_OFFSET_SIZE           4u                                                           /**< Memory offset size */
-#define MEMORY_LENGTH_SIZE           4u                                                           /**< Memory data length size */
-#define MEMORY_TC_DATA_DUMP_SIZE     (MEMORY_OFFSET_SIZE + MEMORY_LENGTH_SIZE)                    /**< Memory TC data dump size */
-#define MEMORY_TC_DATA_LOAD_MAX_SIZE (TC_MAX_DATA_SIZE - MEMORY_OFFSET_SIZE - MEMORY_LENGTH_SIZE) /**< Memory maximum TC data load size */
-#define MEMORY_TM_DATA_DUMP_MAX_SIZE (TM_MAX_DATA_SIZE - MEMORY_OFFSET_SIZE - MEMORY_LENGTH_SIZE) /**< Memory maximum TM data dump size */
+#define MEMORY_BASE_SIZE         2u                                        /**< Memory base size */
+#define MEMORY_OFFSET_SIZE       4u                                        /**< Memory offset size */
+#define MEMORY_LENGTH_SIZE       4u                                        /**< Memory data length size */
+#define MEMORY_TC_DATA_DUMP_SIZE (MEMORY_OFFSET_SIZE + MEMORY_LENGTH_SIZE) /**< Memory TC data dump size */
+#define MEMORY_TC_DATA_LOAD_MAX_SIZE \
+    (TC_MAX_DATA_SIZE - PUS_N_FIELD_SIZE - MEMORY_OFFSET_SIZE - MEMORY_LENGTH_SIZE) /**< Memory maximum TC data load size */
+#define MEMORY_TM_DATA_DUMP_MAX_SIZE \
+    (TM_MAX_DATA_SIZE - PUS_N_FIELD_SIZE - MEMORY_OFFSET_SIZE - MEMORY_LENGTH_SIZE) /**< Memory maximum TM data dump size */
 
 /***************************** Types Definitions *****************************/
 
@@ -42,18 +44,6 @@ typedef uint32_t pus6Offset_t;
 
 /** @brief PUS6 length type */
 typedef uint32_t pus6Length_t;
-
-/**
- * @struct  pusTCLoadDataField_t
- * @brief   Struct type for memory load TC data field
- */
-typedef struct
-{
-    pus6Offset_t offset;                        /**< @brief Data offset in base that will be loaded in memory */
-    pus6Length_t length;                        /**< @brief Data length that will be loaded in memory */
-    uint8_t data[MEMORY_TC_DATA_LOAD_MAX_SIZE]; /**< @brief Data that will be loaded in memory */
-} ATTR_BYTE_ALIGNED pusTCLoadDataField_t;
-ASSERT_SIZE(pusTCLoadDataField_t, TC_MAX_DATA_SIZE)
 
 /**
  * @struct  pusTCDumpDataField_t
@@ -76,7 +66,6 @@ typedef struct
     pus6Length_t length;                        /**< @brief Data length that will be dumped from memory */
     uint8_t data[MEMORY_TM_DATA_DUMP_MAX_SIZE]; /**< @brief Data that will be dumped from memory */
 } ATTR_BYTE_ALIGNED pusTMDumpDataField_t;
-ASSERT_SIZE(pusTMDumpDataField_t, TM_MAX_DATA_SIZE)
 
 /*************************** Variables Declarations **************************/
 
