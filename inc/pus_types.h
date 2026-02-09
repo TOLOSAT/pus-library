@@ -86,6 +86,7 @@ typedef struct
     uint8_t fine_time[FINE_TIME_SIZE];     /**< @brief Field that contains time fraction */
 } ATTR_BYTE_ALIGNED cucTime_t;
 ASSERT_SIZE(cucTime_t, CUC_TIME_SIZE)
+ASSERT_SIZE(cucTime_t, sizeof(time_t))
 
 /**
  * @struct  sppHeader_t
