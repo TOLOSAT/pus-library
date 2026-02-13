@@ -45,28 +45,6 @@ typedef uint32_t pus6Offset_t;
 /** @brief PUS6 length type */
 typedef uint32_t pus6Length_t;
 
-/**
- * @struct  pusTCDumpDataField_t
- * @brief   Struct type for memory dump TC data field
- */
-typedef struct
-{
-    pus6Offset_t offset; /**< @brief Data offset in base that will be loaded in memory */
-    pus6Length_t length; /**< @brief Data length that will be loaded in memory */
-} ATTR_BYTE_ALIGNED pusTCDumpDataField_t;
-ASSERT_SIZE(pusTCDumpDataField_t, MEMORY_TC_DATA_DUMP_SIZE)
-
-/**
- * @struct  pusTMDumpDataField_t
- * @brief   Struct type for memory dump TM data field
- */
-typedef struct
-{
-    pus6Offset_t offset;                        /**< @brief Data offset in base that will be dumped from memory */
-    pus6Length_t length;                        /**< @brief Data length that will be dumped from memory */
-    uint8_t data[MEMORY_TM_DATA_DUMP_MAX_SIZE]; /**< @brief Data that will be dumped from memory */
-} ATTR_BYTE_ALIGNED pusTMDumpDataField_t;
-
 /*************************** Variables Declarations **************************/
 
 /*************************** Functions Declarations **************************/

@@ -18,8 +18,6 @@
 
 /*************************** Functions Declarations **************************/
 
-static returnCode_t BuildS6SS4(pusTM_t *tm, pusTMDumpDataField_t *memory_dump);
-
 /*************************** Variables Definitions ***************************/
 
 /*************************** Functions Definitions ***************************/
@@ -154,9 +152,8 @@ returnCode_t ExecuteS6SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
  */
 returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
-    returnCode_t return_value           = RET_SUCCESSFUL;
-    pusTCDumpDataField_t requested_data = { 0 };
-    pusTMDumpDataField_t dumped_data    = { 0 };
+    returnCode_t return_value               = RET_SUCCESSFUL;
+    pusData_t dumped_data[TM_MAX_DATA_SIZE] = { 0 };
 
     // Unused
     (void)(env);
@@ -164,58 +161,98 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
     // Check parameter(s)
     if ((tc != NULL) && (tm != NULL) && (error_code != NULL))
     {
+        deviceNo_t temp_dev       = 0u;
+        pus6Base_t dump_base      = 0u;
+        pusNField_t N             = 0u;
+        uint32_t offset           = sizeof(pus6Base_t) + sizeof(pusNField_t);
+        length_t dumped_data_size = 0u;
+
         // Error code Initialization
         *error_code = PUS_EXECUTION_NO_ERROR;
 
-        // Get the N number of data
-        pus6Base_t base;
-        BIG_ENDIAN_ARRAY_TO_UINT16(tc->data, base);
+        // Get base and N (number of data)
+        BIG_ENDIAN_ARRAY_TO_UINT16(tc->data, dump_base);
+        BIG_ENDIAN_ARRAY_TO_UINT16(&tc->data[sizeof(pus6Base_t)], N);
 
-        // First get data from TC
-        (void)memcpy((void *)&requested_data, (void *)tc->data, MEMORY_TC_DATA_DUMP_SIZE);
-        // Swip Endianness
-        requested_data.offset = WORD_BYTE_SWAP(requested_data.offset);
-        requested_data.length = WORD_BYTE_SWAP(requested_data.length);
+        // Copy them to the TM data
+        (void)memcpy(&dumped_data[dumped_data_size], tc->data, sizeof(pus6Base_t) + sizeof(pusNField_t));
+        dumped_data_size += sizeof(pus6Base_t) + sizeof(pusNField_t);
 
         // First open a device for this file
-        deviceNo_t temp_dev  = 0u;
-        returnCode_t test_fs = DeviceOpen(&temp_dev, DEVICE_TYPE_FILE, base);
+        returnCode_t test_fs = DeviceOpen(&temp_dev, DEVICE_TYPE_FILE, dump_base);
         if (test_fs == RET_SUCCESSFUL)
         {
-            // Move read/write pointer
-            test_fs = DeviceIoctl(temp_dev, IOCTL_FS_SEEK, &requested_data.offset, sizeof(requested_data.offset));
-            if (test_fs == RET_SUCCESSFUL)
+            // Get data from TC
+            pusNField_t i = 0u;
+            while ((return_value == RET_SUCCESSFUL) && (i < N))
             {
-                // Read data from FS
-                test_fs = DeviceRead(temp_dev, dumped_data.data, requested_data.length);
-                if (test_fs == RET_SUCCESSFUL)
+                // Check if the data offset and size will fit in the TM at this point
+                if ((dumped_data_size + sizeof(pus6Offset_t) + sizeof(pus6Length_t)) <= TM_MAX_DATA_SIZE)
                 {
-                    // Update data an build TM
-                    dumped_data.offset      = requested_data.offset;
-                    dumped_data.length      = requested_data.length;
-                    returnCode_t test_build = BuildS6SS4(tm, &dumped_data);
-                    if (test_build != RET_SUCCESSFUL)
+                    pus6Length_t dump_length = 0u;
+                    pus6Offset_t dump_offset = 0u;
+
+                    // Get data dump size and offset
+                    BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset], dump_offset);
+                    BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset + sizeof(pus6Offset_t)], dump_length);
+
+                    // Copy them to the TM data
+                    (void)memcpy(&dumped_data[dumped_data_size], &tc->data[offset], sizeof(pus6Offset_t) + sizeof(pus6Length_t));
+                    dumped_data_size += sizeof(pus6Offset_t) + sizeof(pus6Length_t);
+
+                    // Check the data will fit in the TM at this point
+                    if ((dumped_data_size + dump_length) <= TM_MAX_DATA_SIZE)
                     {
-                        return_value = RET_ERROR;
-                        *error_code  = PUS_EXECUTION_TM_BUILDING_FAILED;
+                        // Move read/write pointer
+                        test_fs = DeviceIoctl(temp_dev, IOCTL_FS_SEEK, &dump_offset, sizeof(dump_offset));
+                        if (test_fs == RET_SUCCESSFUL)
+                        {
+                            // Read data from FS
+                            test_fs = DeviceRead(temp_dev, &dumped_data[dumped_data_size], dump_length);
+                            if (test_fs == RET_SUCCESSFUL)
+                            {
+                                // Update dumped data size
+                                dumped_data_size += dump_length;
+
+                                // Update index and offset
+                                offset += sizeof(pus6Offset_t) + sizeof(pus6Length_t);
+                                i++;
+                            }
+                            else if (test_fs == RET_NOT_AVAILABLE)
+                            {
+                                // Can't read the file because the section does not exist.
+                                return_value = RET_NOT_AVAILABLE;
+                                *error_code  = PUS_EXECUTION_FAILED;
+                            }
+                            else
+                            {
+                                return_value = RET_ERROR;
+                                *error_code  = PUS_EXECUTION_FAILED;
+                            }
+                        }
+                        else
+                        {
+                            return_value = RET_ERROR;
+                            *error_code  = PUS_EXECUTION_FAILED;
+                        }
                     }
-                }
-                else if (test_fs == RET_NOT_AVAILABLE)
-                {
-                    // Can't read the file because the section does not exist.
-                    return_value = RET_NOT_AVAILABLE;
-                    *error_code  = PUS_EXECUTION_FAILED;
+                    else
+                    {
+                        return_value = RET_INVALID_PARAM;
+                        *error_code  = PUS_EXECUTION_UNEXPECTED_DATA;
+                    }
                 }
                 else
                 {
-                    return_value = RET_ERROR;
-                    *error_code  = PUS_EXECUTION_FAILED;
+                    return_value = RET_INVALID_PARAM;
+                    *error_code  = PUS_EXECUTION_UNEXPECTED_DATA;
                 }
             }
-            else
+
+            // If data dumping went successful, send the TM
+            if (return_value == RET_SUCCESSFUL)
             {
-                return_value = RET_ERROR;
-                *error_code  = PUS_EXECUTION_FAILED;
+                return_value = BuildTM(tm, 6u, 4u, (pusData_t *)dumped_data, dumped_data_size);
             }
 
             // Then close the device anyway (to avoid blocking the resource)
@@ -226,40 +263,6 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
             return_value = RET_INVALID_PARAM;
             *error_code  = PUS_EXECUTION_FAILED;
         }
-    }
-    else
-    {
-        return_value = RET_INVALID_PARAM;
-    }
-
-    return return_value;
-}
-
-/**
- * @fn          BuildS6SS4(pusTM_t *tm, pusTMDumpDataField_t *memory_dump)
- * @brief       Function that send S6SS4 TM (Memory Dump)
- * @param[out]  tm TM that will be sent
- * @param[in]   memory_dump Data dumped that will be send
- * @retval      #RET_INVALID_PARAM if a pointer is NULL
- * @retval      #RET_ERROR if cannot build TM
- * @retval      #RET_SUCCESSFUL else
- */
-static returnCode_t BuildS6SS4(pusTM_t *tm, pusTMDumpDataField_t *memory_dump)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-
-    // Check parameter(s)
-    if ((tm != NULL) && (memory_dump != NULL))
-    {
-        // Compute size
-        uint16_t data_size = MEMORY_BASE_SIZE + MEMORY_OFFSET_SIZE + MEMORY_LENGTH_SIZE + memory_dump->length;
-
-        // Swip Endianness
-        memory_dump->offset = WORD_BYTE_SWAP(memory_dump->offset);
-        memory_dump->length = WORD_BYTE_SWAP(memory_dump->length);
-
-        // Build TM
-        return_value = BuildTM(tm, 6u, 4u, (pusData_t *)memory_dump, data_size);
     }
     else
     {
