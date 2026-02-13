@@ -86,6 +86,7 @@ typedef struct
     uint8_t fine_time[FINE_TIME_SIZE];     /**< @brief Field that contains time fraction */
 } ATTR_BYTE_ALIGNED cucTime_t;
 ASSERT_SIZE(cucTime_t, CUC_TIME_SIZE)
+ASSERT_SIZE(cucTime_t, sizeof(time_t))
 
 /**
  * @struct  sppHeader_t
@@ -162,6 +163,12 @@ typedef uint8_t pusAcceptanceError_t;
  * @brief Execution Error Type
  */
 typedef uint8_t pusExecutionError_t;
+
+/**
+ * @brief PUS N field (used when there is a repetition for data)
+ */
+typedef uint16_t pusNField_t;
+ASSERT_SIZE(pusNField_t, PUS_N_FIELD_SIZE)
 
 #endif /* PUS_TYPES_H */
 

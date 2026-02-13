@@ -123,7 +123,7 @@ returnCode_t PopActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *
                                 // From the previous nb_activities (-1 because an activity has been pop) check if there is still an activity
                                 if ((schedule_info.nb_activities - 1u) > 0u)
                                 {
-                                    return_value = GetNodeFromSchedule(schedule_deviceno, &oldest_node, schedule_info.oldest_activity_index);
+                                    return_value = GetNodeFromSchedule(schedule_deviceno, &oldest_node, oldest_node.next_node_index);
                                     if (return_value == RET_SUCCESSFUL)
                                     {
                                         *next_activity_date = oldest_node.activity.timestamp;
