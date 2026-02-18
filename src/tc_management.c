@@ -121,7 +121,10 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
         if (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL)
         {
             // Check write index
-            return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_UART_GET_RX_COUNTER, &write_index, sizeof(length_t));
+            length_t counter = 0u;
+            return_value     = DeviceIoctl(receive_context->dev_rx, IOCTL_UART_GET_RX_COUNTER, &counter, sizeof(length_t));
+            // Flip counter to get write index
+            write_index = receive_context->rx_buffer_size - counter;
         }
         else
         {

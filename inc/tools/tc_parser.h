@@ -28,6 +28,28 @@
 /***************************** Types Definitions *****************************/
 
 /**
+ * @enum tcState_t
+ * @brief Enumeration representing the state of a TC during parsing process
+ */
+typedef enum
+{
+    TC_STATE_VALID   = 0u, /**< TC is valid */
+    TC_STATE_PARTIAL = 1u, /**< TC is partial */
+    TC_STATE_INVALID = 2u, /**< TC is invalid */
+} tcState_t;
+
+/**
+ * @struct tcFrame_t
+ * @brief Structure representing a TC frame during parsing process
+ */
+typedef struct
+{
+    length_t start;  /**< @brief Start index of current TC */
+    length_t length; /**< @brief Total declared TC length (from header) */
+    tcState_t state; /**< @brief State of the current TC being parsed */
+} tcFrame_t;
+
+/**
  * @struct pusParsingContext_t
  * @brief Context structure for TC parsing
  */
