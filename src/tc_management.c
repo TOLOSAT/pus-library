@@ -286,59 +286,67 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
     pusTC_t tc                = { 0 };
     pusTM_t tm                = { 0 };
     pusTM_t execution_tm      = { 0 };
+    length_t nb_message       = 0u;
 
     // Check parameter(s)
     if (execution_context->status == PUS_CONTEXT_INITIALIZED)
     {
-        // First, check if there is a TC.
-        return_value = DeviceRead(execution_context->dev_tc, (data_t)&tc, TC_MAX_SIZE);
-        if (return_value == RET_SUCCESSFUL)
+        do
         {
-            pusExecutionTableEntry_t *p_entry = NULL;
-
-            // Compute the routing key
-            uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc.spp_header.packet_id), tc.tc_header.service, tc.tc_header.subservice);
-
-            // Then, find which TC have to be executed
-            return_value = ExecutionSearch(key, &execution_context->execution_table, &p_entry);
+            // First, check if there is a TC.
+            return_value = DeviceRead(execution_context->dev_tc, (data_t)&tc, TC_MAX_SIZE);
             if (return_value == RET_SUCCESSFUL)
             {
-                // Now execute the TC
-                pusExecutionError_t error_code = PUS_EXECUTION_FAILED;
-                return_value                   = p_entry->execution_function(p_entry->env, &tc, &tm, &error_code);
+                // Read the number of message in the buffer
+                DeviceIoctl(execution_context->dev_tc, IOCTL_BUFFER_GET_COUNT, &nb_message, sizeof(length_t));
+
+                pusExecutionTableEntry_t *p_entry = NULL;
+
+                // Compute the routing key
+                uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc.spp_header.packet_id), tc.tc_header.service, tc.tc_header.subservice);
+
+                // Then, find which TC have to be executed
+                return_value = ExecutionSearch(key, &execution_context->execution_table, &p_entry);
                 if (return_value == RET_SUCCESSFUL)
                 {
-                    // Acknowledge TC execution
-                    (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
-
-                    // Check if a specific TM has to be send
-                    if (p_entry->tm_requested == TM_REQUESTED)
+                    // Now execute the TC
+                    pusExecutionError_t error_code = PUS_EXECUTION_FAILED;
+                    return_value                   = p_entry->execution_function(p_entry->env, &tc, &tm, &error_code);
+                    if (return_value == RET_SUCCESSFUL)
                     {
-                        // Send specific TM
-                        return_value = DeviceWrite(execution_context->dev_tm, (data_t)&tm, TM_MAX_SIZE);
-                        if (return_value == RET_SUCCESSFUL)
+                        // Acknowledge TC execution
+                        (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
+
+                        // Check if a specific TM has to be send
+                        if (p_entry->tm_requested == TM_REQUESTED)
                         {
-                            taskNo_t tm_sender = NO_TASK;
-                            return_value       = DeviceIoctl(execution_context->dev_tm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
-                            if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
+                            // Send specific TM
+                            return_value = DeviceWrite(execution_context->dev_tm, (data_t)&tm, TM_MAX_SIZE);
+                            if (return_value == RET_SUCCESSFUL)
                             {
-                                return_value = SendSignal(tm_sender, SIGNAL_TC);
+                                taskNo_t tm_sender = NO_TASK;
+                                return_value       = DeviceIoctl(execution_context->dev_tm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
+                                if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
+                                {
+                                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                                }
                             }
                         }
+                    }
+                    else
+                    {
+                        // TC Failed to be executed
+                        (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, error_code);
                     }
                 }
                 else
                 {
-                    // TC Failed to be executed
-                    (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, error_code);
+                    // TC does not have execution procedure
+                    (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, PUS_EXECUTION_UNAVAILABLE);
                 }
             }
-            else
-            {
-                // TC does not have execution procedure
-                (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, PUS_EXECUTION_UNAVAILABLE);
-            }
-        }
+            // Check if there are still messages in the buffer
+        } while ((return_value == RET_SUCCESSFUL) && (nb_message > 0u));
     }
     else
     {
