@@ -3,7 +3,7 @@
  * @author  Merlin Kooshmanian
  * @brief   Source file for TC management
  *
- * @copyright Copyright (c) TOLOSAT 2025
+ * @copyright Copyright (c) TOLOSAT 2026
  */
 
 /******************************* Include Files *******************************/
@@ -161,8 +161,11 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
                     return_value = RouteSearch(key, &receive_context->routing_table, &p_entry);
                     if (return_value == RET_SUCCESSFUL)
                     {
-                        // Acknowledge TC
-                        (void)SendAcptAckTM(&tc, &acceptance_tm, receive_context->dev_ack);
+                        // Acknowledge TC Acceptation
+                        if ((tc->tc_header.version_flags & PUS_FLAG_ACK_ACC) == PUS_FLAG_ACK_ACC)
+                        {
+                            (void)SendAcptAckTM(tc, &acceptance_tm, receive_context->dev_ack);
+                        }
 
                         // Send TC to the task that will execute it
                         return_value = DeviceWrite(p_entry->dev_route, (data_t)&tc, TC_MAX_SIZE);

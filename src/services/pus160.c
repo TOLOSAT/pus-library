@@ -3,7 +3,7 @@
  * @author  Théo Bessel
  * @brief   Source file for PUS 160 functions (System management)
  *
- * @copyright Copyright (c) TOLOSAT 2025
+ * @copyright Copyright (c) TOLOSAT 2026
  */
 
 /******************************* Include Files *******************************/
