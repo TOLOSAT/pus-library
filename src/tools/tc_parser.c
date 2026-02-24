@@ -20,10 +20,10 @@
 
 /***************************** Macros Definitions ****************************/
 
-#define EXTRACT_TC_LENGTH(buffer, start, buffer_size)                                                                    \
-    ((((uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t)) % (buffer_size)] << 8))   \
-      | (uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t) + 1uu) % (buffer_size)])) \
-     + SPP_HEADER_SIZE + 1u) /**<                                                                                        \
+#define EXTRACT_TC_LENGTH(buffer, start, buffer_size)                                                                   \
+    ((((uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t)) % (buffer_size)] << 8))  \
+      | (uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t) + 1u) % (buffer_size)])) \
+     + SPP_HEADER_SIZE + 1u) /**<                                                                                       \
 Macro to extract TC data length from the RX buffer, given the start index of the TC */
 
 /*************************** Functions Declarations **************************/
@@ -49,9 +49,9 @@ static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error);
 static returnCode_t CheckCRC(pusTC_t *tc)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
-    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1uu;
+    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
     pusCRC_t reiceved_crc     = (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 0u] << 8u)
-                            + (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 1uu]);
+                            + (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 1u]);
 
     // Compute the TC's CRC
     pusCRC_t computed_crc = computeCRC((uint8_t *)tc, data_size + SPP_HEADER_SIZE - CRC_TRAILER_SIZE);
@@ -134,7 +134,7 @@ static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
 
     if ((tc != NULL) && (error != NULL))
     {
-        uint16_t data_size  = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1uu;
+        uint16_t data_size  = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
         uint8_t pus_version = tc->tc_header.version_flags;
 
         // Check Size

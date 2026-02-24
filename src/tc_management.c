@@ -163,9 +163,9 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
                     if (return_value == RET_SUCCESSFUL)
                     {
                         // Acknowledge TC Acceptation
-                        if ((tc->tc_header.version_flags & PUS_FLAG_ACK_ACC) == PUS_FLAG_ACK_ACC)
+                        if ((tc.tc_header.version_flags & PUS_FLAG_ACK_ACC) == PUS_FLAG_ACK_ACC)
                         {
-                            (void)SendAcptAckTM(tc, &acceptance_tm, receive_context->dev_ack);
+                            (void)SendAcptAckTM(&tc, &acceptance_tm, receive_context->dev_ack);
                         }
 
                         // Send TC to the task that will execute it
