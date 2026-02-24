@@ -20,10 +20,10 @@
 
 /***************************** Macros Definitions ****************************/
 
-#define EXTRACT_TC_LENGTH(buffer, start, buffer_size)                                                                   \
-    ((((uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t)) % (buffer_size)] << 8))  \
-      | (uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t) + 1u) % (buffer_size)])) \
-     + SPP_HEADER_SIZE + 1) /**<                                                                                        \
+#define EXTRACT_TC_LENGTH(buffer, start, buffer_size)                                                                    \
+    ((((uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t)) % (buffer_size)] << 8))   \
+      | (uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t) + 1uu) % (buffer_size)])) \
+     + SPP_HEADER_SIZE + 1u) /**<                                                                                        \
 Macro to extract TC data length from the RX buffer, given the start index of the TC */
 
 /*************************** Functions Declarations **************************/
@@ -49,9 +49,9 @@ static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error);
 static returnCode_t CheckCRC(pusTC_t *tc)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
-    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
+    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1uu;
     pusCRC_t reiceved_crc     = (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 0u] << 8u)
-                            + (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 1u]);
+                            + (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 1uu]);
 
     // Compute the TC's CRC
     pusCRC_t computed_crc = computeCRC((uint8_t *)tc, data_size + SPP_HEADER_SIZE - CRC_TRAILER_SIZE);
@@ -132,55 +132,43 @@ static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
-    if (tc != NULL && error != NULL)
+    if ((tc != NULL) && (error != NULL))
     {
-        uint16_t data_size  = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
+        uint16_t data_size  = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1uu;
         uint8_t pus_version = tc->tc_header.version_flags;
 
-        // Not needed to check the type and secondary header presence again, done in CheckTCPacketIdValidity before
-        // Even if the header is invalid, we still check size and CRC
-
-        if (return_value == RET_SUCCESSFUL)
+        // Check Size
+        if ((data_size > 0u) && (data_size <= TC_MAX_SIZE))
         {
-            // Check Size
-            if (data_size > 0 && data_size <= TC_MAX_SIZE)
+            // Check PUS version number
+            if (((pus_version & PUS_VERSION_NUMBER_MASK) >> PUS_VERSION_NUMBER_OFFSET) == PUS_VERSION_NUMBER)
             {
-                // Check PUS version number
-                if (((pus_version & PUS_VERSION_NUMBER_MASK) >> PUS_VERSION_NUMBER_OFFSET) == PUS_VERSION_NUMBER)
+                // Check CRC
+                if (CheckCRC(tc) == RET_SUCCESSFUL)
                 {
-                    // Check CRC
-                    if (CheckCRC(tc) == RET_SUCCESSFUL)
-                    {
-                        // All checks passed
-                        return_value = RET_SUCCESSFUL;
-                        *error       = PUS_ACCEPTANCE_NO_ERROR;
-                    }
-                    else
-                    {
-                        // CRC invalid
-                        return_value = RET_ERROR;
-                        *error       = PUS_ACCEPTANCE_INVALID_CRC;
-                    }
+                    // All checks passed
+                    return_value = RET_SUCCESSFUL;
+                    *error       = PUS_ACCEPTANCE_NO_ERROR;
                 }
                 else
                 {
-                    // Wrong PUS version
+                    // CRC invalid
                     return_value = RET_ERROR;
-                    *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+                    *error       = PUS_ACCEPTANCE_INVALID_CRC;
                 }
             }
             else
             {
-                // Size too small or too large
+                // Wrong PUS version
                 return_value = RET_ERROR;
                 *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
             }
         }
         else
         {
-            // Packet ID invalid
+            // Size too small or too large
             return_value = RET_ERROR;
-            // error already set in CheckTCPacketIdValidity
+            *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
         }
     }
     else
@@ -205,16 +193,16 @@ static returnCode_t FindTCHeader(pusParsingContext_t *ctx, length_t *header_offs
     length_t header_offset_tmp = (length_t)-1;
 
     // Try to find an header until we reach the write index
-    while (i != ctx->write_index && header_offset_tmp == (length_t)-1)
+    while ((i != ctx->write_index) && (header_offset_tmp == (length_t)-1))
     {
-        sppPacketId_t packet_id = HALF_WORD_BYTE_SWAP(((uint16_t)ctx->p_buffer[i] << 8) | ctx->p_buffer[(i + 1) % ctx->buffer_size]);
+        sppPacketId_t packet_id = HALF_WORD_BYTE_SWAP(((uint16_t)ctx->p_buffer[i] << 8) | ctx->p_buffer[(i + 1u) % ctx->buffer_size]);
 
         pusAcceptanceError_t error; // Dummy variable, we don't need the error here
         if (CheckTCPacketIdValidity(packet_id, &error) == RET_SUCCESSFUL)
         {
             header_offset_tmp = (i - ctx->read_index + ctx->buffer_size) % ctx->buffer_size;
         }
-        i = (i + 1) % ctx->buffer_size;
+        i = (i + 1u) % ctx->buffer_size;
     }
 
     *header_offset = header_offset_tmp;
@@ -259,7 +247,7 @@ static returnCode_t ParseOneTC(pusParsingContext_t *ctx, pusTC_t *tc, tcState_t 
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
-    if (ctx != NULL && tc != NULL && state != NULL && error != NULL)
+    if ((ctx != NULL) && (tc != NULL) && (state != NULL) && (error != NULL))
     {
         length_t tc_start_index = ctx->read_index;
         length_t tc_length      = EXTRACT_TC_LENGTH(ctx->p_buffer, tc_start_index, ctx->buffer_size);
@@ -276,10 +264,10 @@ static returnCode_t ParseOneTC(pusParsingContext_t *ctx, pusTC_t *tc, tcState_t 
         // Check TC validity (header, size, CRC)
         returnCode_t is_tc_valid = CheckTCValidity((pusTC_t *)&tmp, error);
 
-        if (has_full_tc == RET_SUCCESSFUL && is_tc_valid == RET_SUCCESSFUL)
+        if ((has_full_tc == RET_SUCCESSFUL) && (is_tc_valid == RET_SUCCESSFUL))
         {
             // TC is valid and full, copy it to output variable
-            memcpy(tc, tmp, tc_length);
+            (void)memcpy((void *)tc, tmp, tc_length);
             *state = TC_STATE_VALID;
         }
         else if (has_full_tc == RET_ERROR)
@@ -313,36 +301,36 @@ static returnCode_t ParseOneTC(pusParsingContext_t *ctx, pusTC_t *tc, tcState_t 
  */
 returnCode_t ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceError_t *error)
 {
-    returnCode_t ret = RET_SUCCESSFUL;
-    *error           = PUS_ACCEPTANCE_NO_ERROR;
+    returnCode_t return_value = RET_SUCCESSFUL;
 
     if ((ctx != NULL) && (tc != NULL) && (error != NULL))
     {
+        *error                 = PUS_ACCEPTANCE_NO_ERROR;
         length_t header_offset = 0u;
-        ret                    = FindTCHeader(ctx, &header_offset);
 
-        if (ret == RET_SUCCESSFUL)
+        return_value = FindTCHeader(ctx, &header_offset);
+        if (return_value == RET_SUCCESSFUL)
         {
+            tcState_t state = TC_STATE_INVALID;
+
             // Skip to header
             ctx->read_index = (ctx->read_index + header_offset) % ctx->buffer_size;
 
             // Try to parse a TC from here
-            tcState_t state = TC_STATE_INVALID;
-            ret             = ParseOneTC(ctx, tc, &state, error);
-
-            if (ret == RET_SUCCESSFUL)
+            return_value = ParseOneTC(ctx, tc, &state, error);
+            if (return_value == RET_SUCCESSFUL)
             {
                 if ((state == TC_STATE_VALID) || (state == TC_STATE_INVALID))
                 {
                     // Advance read pointer if TC is full (valid or invalid)
                     ctx->read_index =
-                        (ctx->read_index + SPP_HEADER_SIZE + HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1) % ctx->buffer_size;
+                        (ctx->read_index + SPP_HEADER_SIZE + HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u) % ctx->buffer_size;
                 }
                 else
                 {
                     // Partial TC, header OK but not complete
-                    *error = PUS_ACCEPTANCE_INVALID_FORMAT;
-                    ret    = RET_NOT_AVAILABLE;
+                    *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
+                    return_value = RET_NOT_AVAILABLE;
                 }
             }
             else
@@ -363,8 +351,8 @@ returnCode_t ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceErr
     }
     else
     {
-        ret = RET_INVALID_PARAM;
+        return_value = RET_INVALID_PARAM;
     }
 
-    return ret;
+    return return_value;
 }
