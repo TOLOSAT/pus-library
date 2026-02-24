@@ -195,8 +195,8 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
             else
             {
                 // Update read index to skip bad TC
+                return_value                = RET_SUCCESSFUL;
                 receive_context->read_index = tc_parsing_context.read_index;
-
                 // Invalid TC, TC will be non-acknowledged.
                 (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
             }

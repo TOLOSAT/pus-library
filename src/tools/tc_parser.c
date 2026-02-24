@@ -284,11 +284,13 @@ static returnCode_t ParseOneTC(pusParsingContext_t *ctx, pusTC_t *tc, tcState_t 
         }
         else if (has_full_tc == RET_ERROR)
         {
-            *state = TC_STATE_PARTIAL;
+            *state       = TC_STATE_PARTIAL;
+            return_value = RET_NOT_AVAILABLE;
         }
         else
         {
-            *state = TC_STATE_INVALID;
+            *state       = TC_STATE_INVALID;
+            return_value = RET_ERROR;
         }
     }
     else
@@ -345,8 +347,10 @@ returnCode_t ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceErr
             }
             else
             {
-                // The parsing is not successful
-                // error is already set in ParseOneTC
+                // The parsing is not successful, error is already set in ParseOneTC
+
+                // We step 1 byte in order to check if there is a valid TC on the next pass
+                ctx->read_index++;
             }
         }
         else
