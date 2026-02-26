@@ -89,7 +89,7 @@ ASSERT_SIZE(cucTime_t, CUC_TIME_SIZE)
 
 /**
  * @struct  sppHeader_t
- * @brief   Struct type for a SPP Header
+ * @brief   Struct type for a SPP (Primary) header
  */
 typedef struct
 {
@@ -101,7 +101,7 @@ ASSERT_SIZE(sppHeader_t, SPP_HEADER_SIZE)
 
 /**
  * @struct  pusTCHeader_t
- * @brief   Struct type for a TC
+ * @brief   Struct type for a TC (Secondary) header
  */
 typedef struct
 {
@@ -114,7 +114,7 @@ ASSERT_SIZE(pusTCHeader_t, TC_HEADER_SIZE)
 
 /**
  * @struct  pusTMHeader_t
- * @brief   Struct type for a TM
+ * @brief   Struct type for a TM (Secondary) header
  */
 typedef struct
 {
