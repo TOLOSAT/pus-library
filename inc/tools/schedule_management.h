@@ -65,7 +65,7 @@ ASSERT_SIZE(pusActivity_t, ACTIVITY_SIZE)
 typedef struct
 {
     uint16_t status;                    /**< @brief Indicates if node is available or not */
-    pusActivity_t activity;             /**< @brief Indicates if node is available or not */
+    pusActivity_t activity;             /**< @brief PUS activity related to the node */
     pusNodeIndex_t next_node_index;     /**< @brief Next node index (according to their timestamp) */
     pusNodeIndex_t previous_node_index; /**< @brief Previous node index (according to their timestamp) */
 } ATTR_BYTE_ALIGNED pusActivityNode_t;
