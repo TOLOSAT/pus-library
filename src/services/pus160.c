@@ -125,7 +125,6 @@ returnCode_t ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
 
         // Reboot the system (this call is outside the if to ensure that even if there is a context error, we still try to reboot). Here we don't want
         // any error to happen. The context read/write is tested in the bootloader side.
-        LOG("[TM/TC] Rebooting...\n");
         return_value = DeviceIoctl(pus160_env->dev_reboot, 0u, NULL, 0u);
     }
     else

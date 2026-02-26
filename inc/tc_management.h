@@ -23,7 +23,6 @@
 
 #include "pus_types.h"
 #include "tools/tables_management.h"
-#include "tools/tc_parser.h"
 
 /***************************** Macros Definitions ****************************/
 
@@ -69,7 +68,6 @@ typedef struct
 
 extern returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context);
 extern returnCode_t ReceiveTC(pusReceiveContext_t *receive_context);
-
 extern returnCode_t InitTCExecutionContext(pusExecutionContext_t *execution_context);
 extern returnCode_t ExecuteTC(pusExecutionContext_t *execution_context);
 
