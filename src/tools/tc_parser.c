@@ -21,8 +21,8 @@
 /***************************** Macros Definitions ****************************/
 
 #define EXTRACT_TC_LENGTH(buffer, start, buffer_size)                                                                   \
-    ((((uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t)) % (buffer_size)] << 8))  \
-      | (uint16_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t) + 1u) % (buffer_size)])) \
+    ((((length_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t)) % (buffer_size)] << 8))  \
+      | (length_t)((buffer)[((start) + sizeof(sppPacketId_t) + sizeof(sppPacketSequenceCtrl_t) + 1u) % (buffer_size)])) \
      + SPP_HEADER_SIZE + 1u) /**<                                                                                       \
 Macro to extract TC data length from the RX buffer, given the start index of the TC */
 
@@ -126,7 +126,7 @@ returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
         uint8_t pus_version = tc->tc_header.version_flags;
 
         // Check Size
-        if ((data_size > 0u) && (data_size <= TC_MAX_SIZE))
+        if (data_size <= TC_MAX_SIZE)
         {
             // Check PUS version number
             if (((pus_version & PUS_VERSION_NUMBER_MASK) >> PUS_VERSION_NUMBER_OFFSET) == PUS_VERSION_NUMBER)
