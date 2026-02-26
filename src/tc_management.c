@@ -123,7 +123,7 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
         {
             // Check write index
             length_t counter = 0u;
-            return_value     = DeviceIoctl(receive_context->dev_rx, IOCTL_UART_GET_RX_COUNTER, &counter, sizeof(length_t));
+            return_value     = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_GET_RX_COUNT, &counter, sizeof(length_t));
             // Flip counter to get write index
             write_index = receive_context->rx_buffer_size - counter;
         }
