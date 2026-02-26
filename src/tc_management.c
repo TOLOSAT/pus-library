@@ -1,5 +1,5 @@
 /**
- * @file    tc_management.h
+ * @file    tc_management.c
  * @author  Merlin Kooshmanian
  * @brief   Source file for TC management
  *
@@ -16,19 +16,18 @@
 #include "tools/schedule_management.h"
 #include "tools/crc_computation.h"
 #include "services/pus1.h"
+#include "tools/tc_parser.h"
 
 /***************************** Macros Definitions ****************************/
 
 /*************************** Functions Declarations **************************/
 
+static returnCode_t ProcessValidTC(pusReceiveContext_t *receive_context, pusTC_t *tc, pusTM_t *acceptance_tm);
 static returnCode_t FormatTC(pusTC_t *tc);
-static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error);
-static void EraseTC(pusTC_t *tc);
 static returnCode_t SendAcptAckTM(const pusTC_t *tc, pusTM_t *acceptance_tm, deviceNo_t dev_ack);
 static returnCode_t SendAcptNackTM(const pusTC_t *tc, pusTM_t *acceptance_tm, deviceNo_t dev_ack, pusAcceptanceError_t acceptance_error);
 static returnCode_t SendExecAckTM(const pusTC_t *tc, pusTM_t *execution_tm, deviceNo_t dev_ack);
 static returnCode_t SendExecNackTM(const pusTC_t *tc, pusTM_t *execution_tm, deviceNo_t dev_ack, pusExecutionError_t execution_error);
-static returnCode_t CheckCRC(pusTC_t *tc);
 
 /*************************** Variables Definitions ***************************/
 
@@ -38,7 +37,10 @@ static returnCode_t CheckCRC(pusTC_t *tc);
  * @fn          InitTCReceiveContext(pusReceiveContext_t *receive_context)
  * @brief       Function that initialise the receive context for TC handling
  * @param[in]   receive_context Execution context for the task dealing with TC execution
- * @retval      #RET_INVALID_PARAM if a pointer is a null pointer or routing table size is null
+ * @retval      #RET_INVALID_PARAM if a pointer is a null pointer
+ * @retval      #RET_INVALID_PARAM if routing table size is zero
+ * @retval      #RET_INVALID_PARAM if PUS receive buffer size is smaller than TC max size
+ * @retval      #RET_INVALID_PARAM if buffer size is zero when rx_type is DEVICE_TYPE_PERIPHERAL
  * @retval      #RET_ERROR if initialisation failed because of device binding or execution table initialisation
  * @retval      #RET_SUCCESSFUL else
  */
@@ -49,7 +51,8 @@ returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context)
 
     // Check parameter(s)
     if ((receive_context != NULL) && (receive_context->routing_table.entries != NULL) && (receive_context->routing_table.size != 0u)
-        && (receive_context->tc != NULL))
+        && ((receive_context->rx_type == DEVICE_TYPE_BUFFER)
+            || ((receive_context->rx_buffer != NULL) && (receive_context->rx_buffer_size > TC_MAX_SIZE))))
     {
         // First initialise the routing table
         return_value = InitRoutingTable(&receive_context->routing_table);
@@ -67,7 +70,8 @@ returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context)
             // Start reception for the RX device if is a peripheral
             if ((device_status == RET_SUCCESSFUL) && (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL))
             {
-                device_status = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_START_RX, receive_context->tc, TC_MAX_SIZE);
+                device_status =
+                    DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_START_RX, receive_context->rx_buffer, receive_context->rx_buffer_size);
             }
 
             // Finally check everything went right
@@ -110,84 +114,74 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
     returnCode_t return_value             = RET_SUCCESSFUL;
     pusTM_t acceptance_tm                 = { 0 };
     pusAcceptanceError_t acceptance_error = PUS_ACCEPTANCE_NO_ERROR;
-    pusTC_t *tc                           = receive_context->tc; // Renaming for easier usage
+    pusTC_t tc                            = { 0 };
 
     // Check parameter(s)
     if (receive_context->status == PUS_CONTEXT_INITIALIZED)
     {
+        length_t write_index = 0u;
+
         // First, check if a new TC has been received
         if (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL)
         {
-            return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_CHECK_RX, NULL, 0u);
-        }
-        else
-        {
-            return_value = DeviceRead(receive_context->dev_rx, (data_t)tc, TC_MAX_SIZE);
-        }
+            length_t counter = 0u;
+            // Check write index
+            return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_GET_RX_COUNT, &counter, sizeof(length_t));
+            // Flip counter to get write index
+            write_index = receive_context->rx_buffer_size - counter;
 
-        // If yes, preprocess the TC
-        if (return_value == RET_SUCCESSFUL)
-        {
-            // First, check the validity of the TC.
-            return_value = CheckTCValidity(tc, &acceptance_error);
-            if (return_value == RET_SUCCESSFUL)
+            // While there is new data in the RX buffer, try to parse TCs
+            while ((return_value == RET_SUCCESSFUL) && (write_index != receive_context->read_index))
             {
-                // If TC is valid, format the TC because of endianness.
-                return_value = FormatTC(tc);
+                pusParsingContext_t tc_parsing_context = {
+                    .p_buffer    = receive_context->rx_buffer,
+                    .buffer_size = receive_context->rx_buffer_size,
+                    .read_index  = receive_context->read_index,
+                    .write_index = write_index,
+                };
+                // First, check the validity of the TC.
+                return_value = ParseBuffer(&tc_parsing_context, &tc, &acceptance_error);
                 if (return_value == RET_SUCCESSFUL)
                 {
-                    pusRoutingTableEntry_t *p_entry = NULL;
+                    // Update read index in the receive context
+                    receive_context->read_index = tc_parsing_context.read_index;
 
-                    // Compute the routing key
-                    uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc->spp_header.packet_id), tc->tc_header.service, tc->tc_header.subservice);
-
-                    // Then, route the TC toward the task that will execute it.
-                    return_value = RouteSearch(key, &receive_context->routing_table, &p_entry);
-                    if (return_value == RET_SUCCESSFUL)
-                    {
-                        // Acknowledge TC Acceptation
-                        if ((tc->tc_header.version_flags & PUS_FLAG_ACK_ACC) == PUS_FLAG_ACK_ACC)
-                        {
-                            (void)SendAcptAckTM(tc, &acceptance_tm, receive_context->dev_ack);
-                        }
-
-                        // Send TC to the task that will execute it
-                        return_value = DeviceWrite(p_entry->dev_route, (data_t)tc, TC_MAX_SIZE);
-                        if (return_value == RET_SUCCESSFUL)
-                        {
-                            taskNo_t tc_processor = NO_TASK;
-                            return_value          = DeviceIoctl(p_entry->dev_route, IOCTL_BUFFER_GET_RECEIVER, &tc_processor, sizeof(taskNo_t));
-                            if ((return_value == RET_SUCCESSFUL) && (tc_processor != NO_TASK))
-                            {
-                                return_value = SendSignal(tc_processor, SIGNAL_TC);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // Bad routing so TC non acknowleded
-                        (void)SendAcptNackTM(tc, &acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_INVALID_ROUTE);
-                    }
+                    // TC is valid, process it.
+                    return_value = ProcessValidTC(receive_context, &tc, &acceptance_tm);
+                }
+                else if (return_value == RET_NOT_AVAILABLE)
+                {
+                    // Do nothing, wait for more data
                 }
                 else
                 {
-                    // Can't format so TC non acknowleded
-                    (void)SendAcptNackTM(tc, &acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_CANT_FORMAT);
+                    return_value = RET_SUCCESSFUL;
+                    // Update read index to skip bad TC
+                    receive_context->read_index = tc_parsing_context.read_index;
+                    // Invalid TC, TC will be non-acknowledged.
+                    (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
                 }
             }
-            else
+        }
+        else
+        {
+            // TC is coming from a queue not from an hardware peripheral
+            // Read the TC directly from the queue.
+            return_value = DeviceRead(receive_context->dev_rx, (data_t)&tc, TC_MAX_SIZE);
+            if (return_value == RET_SUCCESSFUL)
             {
-                // Invalid TC, TC will be non-acknowledged.
-                (void)SendAcptNackTM(tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
-            }
-
-            // Erasing TC for next call;
-            EraseTC(tc);
-
-            // Listen for a new TC when using a peripheral
-            if (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL)
-            {
-                return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_START_RX, receive_context->tc, TC_MAX_SIZE);
+                // First, check the validity of the TC.
+                return_value = CheckTCValidity(&tc, &acceptance_error);
+                if (return_value == RET_SUCCESSFUL)
+                {
+                    // TC is valid, process it.
+                    return_value = ProcessValidTC(receive_context, &tc, &acceptance_tm);
+                }
+                else
+                {
+                    // Invalid TC, TC will be non-acknowledged.
+                    (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
+                }
             }
         }
     }
@@ -275,61 +269,138 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
     pusTC_t tc                = { 0 };
     pusTM_t tm                = { 0 };
     pusTM_t execution_tm      = { 0 };
+    length_t nb_message       = 0u;
 
     // Check parameter(s)
     if (execution_context->status == PUS_CONTEXT_INITIALIZED)
     {
-        // First, check if there is a TC.
-        return_value = DeviceRead(execution_context->dev_tc, (data_t)&tc, TC_MAX_SIZE);
-        if (return_value == RET_SUCCESSFUL)
+        do
         {
-            pusExecutionTableEntry_t *p_entry = NULL;
-
-            // Compute the routing key
-            uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc.spp_header.packet_id), tc.tc_header.service, tc.tc_header.subservice);
-
-            // Then, find which TC have to be executed
-            return_value = ExecutionSearch(key, &execution_context->execution_table, &p_entry);
+            // First, check if there is a TC.
+            return_value = DeviceRead(execution_context->dev_tc, (data_t)&tc, TC_MAX_SIZE);
             if (return_value == RET_SUCCESSFUL)
             {
-                // Now execute the TC
-                pusExecutionError_t error_code = PUS_EXECUTION_FAILED;
-                return_value                   = p_entry->execution_function(p_entry->env, &tc, &tm, &error_code);
+                // Read the number of message in the buffer
+                return_value = DeviceIoctl(execution_context->dev_tc, IOCTL_BUFFER_GET_COUNT, &nb_message, sizeof(length_t));
                 if (return_value == RET_SUCCESSFUL)
                 {
-                    // Acknowledge TC Completion
-                    if ((tc.tc_header.version_flags & PUS_FLAG_ACK_COMPL) == PUS_FLAG_ACK_COMPL)
-                    {
-                        (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
-                    }
+                    pusExecutionTableEntry_t *p_entry = NULL;
 
-                    // Check if a specific TM has to be send
-                    if (p_entry->tm_requested == TM_REQUESTED)
+                    // Compute the routing key
+                    uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc.spp_header.packet_id), tc.tc_header.service, tc.tc_header.subservice);
+
+                    // Then, find which TC have to be executed
+                    return_value = ExecutionSearch(key, &execution_context->execution_table, &p_entry);
+                    if (return_value == RET_SUCCESSFUL)
                     {
-                        // Send specific TM
-                        return_value = DeviceWrite(execution_context->dev_tm, (data_t)&tm, TM_MAX_SIZE);
+                        pusExecutionError_t error_code = PUS_EXECUTION_FAILED;
+                        // Now execute the TC
+                        return_value = p_entry->execution_function(p_entry->env, &tc, &tm, &error_code);
                         if (return_value == RET_SUCCESSFUL)
                         {
-                            taskNo_t tm_sender = NO_TASK;
-                            return_value       = DeviceIoctl(execution_context->dev_tm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
-                            if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
+                            // Acknowledge TC execution
+                            (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
+
+                            // Check if a specific TM has to be send
+                            if (p_entry->tm_requested == TM_REQUESTED)
                             {
-                                return_value = SendSignal(tm_sender, SIGNAL_TC);
+                                // Send specific TM
+                                return_value = DeviceWrite(execution_context->dev_tm, (data_t)&tm, TM_MAX_SIZE);
+                                if (return_value == RET_SUCCESSFUL)
+                                {
+                                    taskNo_t tm_sender = NO_TASK;
+                                    return_value = DeviceIoctl(execution_context->dev_tm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
+                                    if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
+                                    {
+                                        return_value = SendSignal(tm_sender, SIGNAL_TC);
+                                    }
+                                }
                             }
                         }
+                        else
+                        {
+                            // TC Failed to be executed
+                            (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, error_code);
+                        }
+                    }
+                    else
+                    {
+                        // TC does not have execution procedure
+                        (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, PUS_EXECUTION_UNAVAILABLE);
                     }
                 }
-                else
+            }
+            // Check if there are still messages in the buffer
+        } while ((return_value == RET_SUCCESSFUL) && (nb_message > 0u));
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
+ * @fn          ProcessValidTC(pusReceiveContext_t *receive_context, pusTC_t *tc, pusTM_t *acceptance_tm)
+ * @brief       Function that format, route, acknowledge and forward a valid TC to its execution task
+ * @param[in]   receive_context Execution context for the task dealing with TC reception
+ * @param[in]   tc TC to process
+ * @param[out]  acceptance_tm Pointer to the acceptance TM
+ * @retval      #RET_INVALID_PARAM if a pointer is null
+ * @retval      #RET_ERROR if cannot format TC or cannot route TC or cannot write TC into its device
+ * @retval      #RET_SUCCESSFUL else
+ */
+static returnCode_t ProcessValidTC(pusReceiveContext_t *receive_context, pusTC_t *tc, pusTM_t *acceptance_tm)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Check parameter(s)
+    if ((receive_context != NULL) && (tc != NULL) && (acceptance_tm != NULL))
+    {
+        // If TC is valid, format the TC because of endianness.
+        return_value = FormatTC(tc);
+        if (return_value == RET_SUCCESSFUL)
+        {
+            pusRoutingTableEntry_t *p_entry = NULL;
+
+            // Compute the routing key
+            uint32_t key = BUILD_ROUTING_KEY((APID_MASK & tc->spp_header.packet_id), tc->tc_header.service, tc->tc_header.subservice);
+
+            // Then, route the TC toward the task that will execute it.
+            return_value = RouteSearch(key, &receive_context->routing_table, &p_entry);
+            if (return_value == RET_SUCCESSFUL)
+            {
+                // Acknowledge TC Acceptation
+                if ((tc->tc_header.version_flags & PUS_FLAG_ACK_ACC) == PUS_FLAG_ACK_ACC)
                 {
-                    // TC Failed to be executed
-                    (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, error_code);
+                    (void)SendAcptAckTM(tc, acceptance_tm, receive_context->dev_ack);
+                }
+
+                // Send TC to the task that will execute it
+                return_value = DeviceWrite(p_entry->dev_route, (data_t)tc, TC_MAX_SIZE);
+                if (return_value == RET_SUCCESSFUL)
+                {
+                    taskNo_t tc_processor = NO_TASK;
+                    return_value          = DeviceIoctl(p_entry->dev_route, IOCTL_BUFFER_GET_RECEIVER, &tc_processor, sizeof(taskNo_t));
+                    if ((return_value == RET_SUCCESSFUL) && (tc_processor != NO_TASK))
+                    {
+                        return_value = SendSignal(tc_processor, SIGNAL_TC);
+                    }
                 }
             }
             else
             {
-                // TC does not have execution procedure
-                (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, PUS_EXECUTION_UNAVAILABLE);
+                // Bad routing so TC non acknowleded
+                (void)SendAcptNackTM(tc, acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_INVALID_ROUTE);
+                return_value = RET_ERROR;
             }
+        }
+        else
+        {
+            // Can't format so TC non acknowleded
+            (void)SendAcptNackTM(tc, acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_CANT_FORMAT);
+            return_value = RET_ERROR;
         }
     }
     else
@@ -376,87 +447,6 @@ static returnCode_t FormatTC(pusTC_t *tc)
     }
 
     return return_value;
-}
-
-/**
- * @fn          CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
- * @brief       Function that verifies if TC is valid (right version, type, size)
- * @param[in]   tc TC to check validity
- * @param[out]  error Pointer to pass error type to TM(1,2)
- * @retval      #RET_INVALID_PARAM if the TC is not well formated or CRC is invalid
- * @retval      #RET_SUCCESSFUL else
- */
-static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-    uint16_t packet_id        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_id);
-    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
-    uint8_t pus_version       = tc->tc_header.version_flags;
-
-    // Check Packet Version Number
-    if (((packet_id & PACKET_VERSION_NUMBER_MASK) >> PACKET_VERSION_NUMBER_OFFSET) == PACKET_VERSION_NUMBER)
-    {
-        // Check Packet Type
-        if (((packet_id & PACKET_TYPE_MASK) >> PACKET_TYPE_OFFSET) == TC_TYPE)
-        {
-            // Check Secondary Header Presence
-            if (((packet_id & HEADER_PRESENCE_MASK) >> HEADER_PRESENCE_OFFSET) == HEADER_PRESENT)
-            {
-                // Check Size
-                if (data_size >= (TC_HEADER_SIZE + CRC_TRAILER_SIZE))
-                {
-                    // Check PUS version number
-                    if (((pus_version & PUS_VERSION_NUMBER_MASK) >> PUS_VERSION_NUMBER_OFFSET) == PUS_VERSION_NUMBER)
-                    {
-                        // Check CRC
-                        if (CheckCRC(tc) != RET_SUCCESSFUL)
-                        {
-                            return_value = RET_INVALID_PARAM;
-                            *error       = PUS_ACCEPTANCE_INVALID_CRC;
-                        }
-                    }
-                    else
-                    {
-                        return_value = RET_INVALID_PARAM;
-                        *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
-                    }
-                }
-                else
-                {
-                    return_value = RET_INVALID_PARAM;
-                    *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
-                }
-            }
-            else
-            {
-                return_value = RET_INVALID_PARAM;
-                *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
-            }
-        }
-        else
-        {
-            return_value = RET_INVALID_PARAM;
-            *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
-        }
-    }
-    else
-    {
-        return_value = RET_INVALID_PARAM;
-        *error       = PUS_ACCEPTANCE_INVALID_FORMAT;
-    }
-
-    return return_value;
-}
-
-/**
- * @fn              EraseTC(pusTC_t *tc)
- * @brief           Function that erase a TC, it fills it with zeros
- * @param[in,out]   tc Tc to erase
- * @return          Nothing
- */
-static void EraseTC(pusTC_t *tc)
-{
-    (void)memset(tc, 0u, TC_MAX_SIZE);
 }
 
 /**
@@ -616,31 +606,6 @@ static returnCode_t SendExecNackTM(const pusTC_t *tc, pusTM_t *execution_tm, dev
     else
     {
         return_value = RET_INVALID_PARAM;
-    }
-
-    return return_value;
-}
-
-/**
- * @fn          CheckCRC(pusTC_t *tc)
- * @brief       Function that verifies a received TC has not been corrupted
- * @param[in]   tc TC from which the CRC will be checked
- * @retval      #RET_ERROR if the computed CRC is different than the received CRC
- * @retval      #RET_SUCCESSFUL else
- */
-static returnCode_t CheckCRC(pusTC_t *tc)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-    uint16_t data_size        = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
-    pusCRC_t reiceved_crc     = (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 0u] << 8u)
-                            + (pusCRC_t)(tc->data[data_size - TC_HEADER_SIZE - CRC_TRAILER_SIZE + 1u]);
-    pusCRC_t computed_crc = 0u;
-
-    // Compute the TC's CRC
-    computed_crc = computeCRC((uint8_t *)tc, data_size + SPP_HEADER_SIZE - CRC_TRAILER_SIZE);
-    if (computed_crc != reiceved_crc)
-    {
-        return_value = RET_ERROR;
     }
 
     return return_value;

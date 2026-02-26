@@ -50,7 +50,7 @@
 #define CUC_TIME_SIZE                (CUC_HEAD_SIZE + COARSE_TIME_SIZE + FINE_TIME_SIZE) /**< CUC time variables size */
 #define CUC_TIME_STR_SIZE            (2 * CUC_TIME_SIZE) /**< Number of char needed to represent CUC time as a string */
 
-/* SPP Header Constant */
+/* SPP (Primary) Header Constant */
 #define PACKET_VERSION_NUMBER_MASK   0xe000u /**< Bit mask to access packet version number */
 #define PACKET_VERSION_NUMBER_OFFSET 13u     /**< Offset to access packet version number */
 #define PACKET_VERSION_NUMBER        0u      /**< Used packet version number (0 : CCSDS 133. 0-B-1) */
@@ -63,7 +63,7 @@
 #define HEADER_PRESENT               1u      /**< Header is present */
 #define APID_MASK                    0x07ffu /**< Bit mask to access APID */
 
-/* PUS Header Constant */
+/* PUS (Secondary) Header Constant */
 #define PUS_VERSION_NUMBER_MASK      0xf0u /**< Bit mask to access PUS version number */
 #define PUS_VERSION_NUMBER_OFFSET    4u    /**< Offset to access PUS version number */
 #define PUS_VERSION_NUMBER           2u    /**< Valid PUS version number (2 : ECSS-E-ST-70-41C)*/

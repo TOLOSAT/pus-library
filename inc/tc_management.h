@@ -41,7 +41,9 @@ typedef struct
     deviceNo_t dev_rx;               /**< @brief Device bound to the RX resource */
     bufferNo_t buffer_ack;           /**< @brief Buffer where the ACK TM will be sent */
     deviceNo_t dev_ack;              /**< @brief Device bound to the ACK buffer */
-    pusTC_t *tc;                     /**< @brief Pointer to a TC data field in the case it needs to be allocated in the DMA section */
+    uint8_t *rx_buffer;              /**< @brief RX buffer structure */
+    length_t rx_buffer_size;         /**< @brief Size of the RX buffer */
+    length_t read_index;             /**< @brief Read index in the RX buffer */
 } pusReceiveContext_t;
 
 /**
