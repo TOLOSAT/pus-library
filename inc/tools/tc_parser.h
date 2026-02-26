@@ -64,7 +64,9 @@ typedef struct
 /*************************** Variables Declarations **************************/
 
 /*************************** Functions Declarations **************************/
+
 extern returnCode_t ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceError_t *error);
+extern returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error);
 
 #endif /* TC_PARSER_H */
 
