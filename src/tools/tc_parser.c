@@ -76,6 +76,7 @@ static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAccep
     returnCode_t return_value = RET_SUCCESSFUL;
     uint16_t packet_id        = HALF_WORD_BYTE_SWAP(tc_packet_id);
 
+    // Check parameter(s)
     if (error != NULL)
     {
         // Check Packet Version Number
@@ -132,6 +133,7 @@ static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
+    // Check parameter(s)
     if ((tc != NULL) && (error != NULL))
     {
         uint16_t data_size  = HALF_WORD_BYTE_SWAP(tc->spp_header.packet_data_length) + 1u;
@@ -180,73 +182,101 @@ static returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
 }
 
 /**
- * @brief Finds the offset of a TC header in the RX buffer
- *
- * @param rx the RX buffer
- * @param header_offset the offset of the found header, starting from read_index, -1 if not found
- * @return returnCode_t
+ * @fn          FindTCHeader(pusParsingContext_t *ctx, length_t *header_offset)
+ * @brief       Finds the offset of a TC header in the RX buffer
+ * @param[in]   rx the RX buffer
+ * @param[out]  header_offset the offset of the found header, starting from read_index, -1 if not found
+ * @retval      #RET_INVALID_PARAM if ctx or header_offset is NULL pointer
+ * @retval      #RET_ERROR if no headers has been found
+ * @retval      #RET_SUCCESSFUL else
  */
 static returnCode_t FindTCHeader(pusParsingContext_t *ctx, length_t *header_offset)
 {
-    returnCode_t return_value  = RET_SUCCESSFUL;
-    length_t i                 = ctx->read_index;
-    length_t header_offset_tmp = (length_t)-1;
+    returnCode_t return_value = RET_SUCCESSFUL;
 
-    // Try to find an header until we reach the write index
-    while ((i != ctx->write_index) && (header_offset_tmp == (length_t)-1))
+    // Check parameter(s)
+    if ((ctx != NULL) && (header_offset != NULL))
     {
-        sppPacketId_t packet_id = HALF_WORD_BYTE_SWAP(((uint16_t)ctx->p_buffer[i] << 8) | ctx->p_buffer[(i + 1u) % ctx->buffer_size]);
+        length_t i                 = ctx->read_index;
+        length_t header_offset_tmp = (length_t)-1;
 
-        pusAcceptanceError_t error; // Dummy variable, we don't need the error here
-        if (CheckTCPacketIdValidity(packet_id, &error) == RET_SUCCESSFUL)
+        // Try to find an header until we reach the write index
+        while ((i != ctx->write_index) && (header_offset_tmp == (length_t)-1))
         {
-            header_offset_tmp = (i - ctx->read_index + ctx->buffer_size) % ctx->buffer_size;
+            sppPacketId_t packet_id = HALF_WORD_BYTE_SWAP(((uint16_t)ctx->p_buffer[i] << 8) | ctx->p_buffer[(i + 1u) % ctx->buffer_size]);
+
+            pusAcceptanceError_t error; // Dummy variable, we don't need the error here
+            if (CheckTCPacketIdValidity(packet_id, &error) == RET_SUCCESSFUL)
+            {
+                header_offset_tmp = (i - ctx->read_index + ctx->buffer_size) % ctx->buffer_size;
+            }
+            i = (i + 1u) % ctx->buffer_size;
         }
-        i = (i + 1u) % ctx->buffer_size;
+
+        // Update header offset from output parameters
+        *header_offset = header_offset_tmp;
+
+        // No offset has been found, returns an error
+        if (header_offset_tmp == (length_t)-1)
+        {
+            return_value = RET_ERROR;
+        }
     }
-
-    *header_offset = header_offset_tmp;
-
-    if (header_offset_tmp == (length_t)-1)
+    else
     {
-        return_value = RET_ERROR;
+        return_value = RET_INVALID_PARAM;
     }
 
     return return_value;
 }
 
 /**
- * @brief Checks if the RX buffer contains a full TC frame starting at a given index
- *
- * @param[in] ctx the parsing context
- * @param[in] start start index of the TC
- * @param[in] length total declared TC length
- * @return returnCode_t
+ * @fn          HasFullTC(pusParsingContext_t *ctx, length_t start, length_t length)
+ * @brief       Checks if the RX buffer contains a full TC frame starting at a given index
+ * @param[in]   ctx the parsing context
+ * @param[in]   start start index of the TC
+ * @param[in]   length total declared TC length
+ * @retval      #RET_INVALID_PARAM if parsing context is NULL
+ * @retval      #RET_INVALID_PARAM if start index is out of bounds or length exceeds buffer size
+ * @retval      #RET_SUCCESSFUL if a full TC is found
+ * @retval      #RET_ERROR else
  */
 static returnCode_t HasFullTC(pusParsingContext_t *ctx, length_t start, length_t length)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
-    length_t available = (ctx->write_index - start + ctx->buffer_size) % ctx->buffer_size;
-    if (available < length)
+    // Check parameter(s)
+    if ((ctx != NULL) && (start < ctx->buffer_size) && (length <= ctx->buffer_size))
     {
-        return_value = RET_ERROR;
+        length_t available = (ctx->write_index - start + ctx->buffer_size) % ctx->buffer_size;
+        if (available < length)
+        {
+            return_value = RET_ERROR;
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
     }
     return return_value;
 }
 
 /**
- * @brief
- *
- * @param[in] ctx the parsing context
- * @param[out] tc the TC frame structure to fill
- * @param[out] state pointer to store the TC state
- * @return returnCode_t
+ * @fn          ParseOneTC(pusParsingContext_t *ctx, pusTC_t *tc, tcState_t *state, pusAcceptanceError_t *error)
+ * @brief       Parse one TC frame from the parsing context
+ * @param[in]   ctx the parsing context
+ * @param[out]  tc the TC frame structure to fill
+ * @param[out]  state pointer to store the TC state
+ * @retval      #RET_INVALID_PARAM if any parameter is null pointer
+ * @retval      #RET_ERROR if parsing error occurs
+ * @retval      #RET_NOT_AVAILABLE if there is no more complete TC frame
+ * @retval      #RET_SUCCESSFUL else
  */
 static returnCode_t ParseOneTC(pusParsingContext_t *ctx, pusTC_t *tc, tcState_t *state, pusAcceptanceError_t *error)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
+    // Check parameter(s)
     if ((ctx != NULL) && (tc != NULL) && (state != NULL) && (error != NULL))
     {
         length_t tc_start_index = ctx->read_index;
@@ -303,6 +333,7 @@ returnCode_t ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceErr
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
+    // Check parameter(s)
     if ((ctx != NULL) && (tc != NULL) && (error != NULL))
     {
         *error                 = PUS_ACCEPTANCE_NO_ERROR;

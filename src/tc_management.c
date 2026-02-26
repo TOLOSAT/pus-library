@@ -121,9 +121,9 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
         // First, check if a new TC has been received
         if (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL)
         {
-            // Check write index
             length_t counter = 0u;
-            return_value     = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_GET_RX_COUNT, &counter, sizeof(length_t));
+            // Check write index
+            return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_GET_RX_COUNT, &counter, sizeof(length_t));
             // Flip counter to get write index
             write_index = receive_context->rx_buffer_size - counter;
         }
@@ -198,8 +198,8 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
             }
             else
             {
+                return_value = RET_SUCCESSFUL;
                 // Update read index to skip bad TC
-                return_value                = RET_SUCCESSFUL;
                 receive_context->read_index = tc_parsing_context.read_index;
                 // Invalid TC, TC will be non-acknowledged.
                 (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
@@ -314,9 +314,9 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
                     return_value = ExecutionSearch(key, &execution_context->execution_table, &p_entry);
                     if (return_value == RET_SUCCESSFUL)
                     {
-                        // Now execute the TC
                         pusExecutionError_t error_code = PUS_EXECUTION_FAILED;
-                        return_value                   = p_entry->execution_function(p_entry->env, &tc, &tm, &error_code);
+                        // Now execute the TC
+                        return_value = p_entry->execution_function(p_entry->env, &tc, &tm, &error_code);
                         if (return_value == RET_SUCCESSFUL)
                         {
                             // Acknowledge TC execution
