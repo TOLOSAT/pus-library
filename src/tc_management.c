@@ -299,7 +299,10 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
                         if (return_value == RET_SUCCESSFUL)
                         {
                             // Acknowledge TC execution
-                            (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
+                            if ((tc.tc_header.version_flags & PUS_FLAG_ACK_COMPL) == PUS_FLAG_ACK_COMPL)
+                            {
+                                (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
+                            }
 
                             // Check if a specific TM has to be send
                             if (p_entry->tm_requested == TM_REQUESTED)
