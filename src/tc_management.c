@@ -159,6 +159,7 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
                     // Update read index to skip bad TC
                     receive_context->read_index = tc_parsing_context.read_index;
                     // Invalid TC, TC will be non-acknowledged.
+                    ConsolePrint("Invalid TC received (error code: %d)\n", acceptance_error);
                     (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
                 }
             }
@@ -180,6 +181,7 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
                 else
                 {
                     // Invalid TC, TC will be non-acknowledged.
+                    ConsolePrint("Invalid TC received (error code: %d)\n", acceptance_error);
                     (void)SendAcptNackTM(&tc, &acceptance_tm, receive_context->dev_ack, acceptance_error);
                 }
             }
@@ -299,7 +301,11 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
                         if (return_value == RET_SUCCESSFUL)
                         {
                             // Acknowledge TC execution
-                            (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
+                            ConsolePrint("TC(%d,%d) has been executed\n", tc.tc_header.service, tc.tc_header.subservice);
+                            if ((tc.tc_header.version_flags & PUS_FLAG_ACK_COMPL) == PUS_FLAG_ACK_COMPL)
+                            {
+                                (void)SendExecAckTM(&tc, &execution_tm, execution_context->dev_ack);
+                            }
 
                             // Check if a specific TM has to be send
                             if (p_entry->tm_requested == TM_REQUESTED)
@@ -309,6 +315,7 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
                                 if (return_value == RET_SUCCESSFUL)
                                 {
                                     taskNo_t tm_sender = NO_TASK;
+                                    ConsolePrint("TM(%d,%d) has been sent\n", tm.tm_header.service, tm.tm_header.subservice);
                                     return_value = DeviceIoctl(execution_context->dev_tm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                                     if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                                     {
@@ -320,12 +327,16 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
                         else
                         {
                             // TC Failed to be executed
+                            ConsolePrint("TC(%d,%d) cannot be executed (error code: %d)\n", tc.tc_header.service, tc.tc_header.subservice,
+                                         error_code);
                             (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, error_code);
                         }
                     }
                     else
                     {
                         // TC does not have execution procedure
+                        ConsolePrint("TC(%d,%d) cannot be executed (error code: %d)\n", tc.tc_header.service, tc.tc_header.subservice,
+                                     PUS_EXECUTION_UNAVAILABLE);
                         (void)SendExecNackTM(&tc, &execution_tm, execution_context->dev_ack, PUS_EXECUTION_UNAVAILABLE);
                     }
                 }
@@ -372,6 +383,7 @@ static returnCode_t ProcessValidTC(pusReceiveContext_t *receive_context, pusTC_t
             if (return_value == RET_SUCCESSFUL)
             {
                 // Acknowledge TC Acceptation
+                ConsolePrint("TC(%d,%d) has been received\n", tc->tc_header.service, tc->tc_header.subservice);
                 if ((tc->tc_header.version_flags & PUS_FLAG_ACK_ACC) == PUS_FLAG_ACK_ACC)
                 {
                     (void)SendAcptAckTM(tc, acceptance_tm, receive_context->dev_ack);
@@ -392,6 +404,7 @@ static returnCode_t ProcessValidTC(pusReceiveContext_t *receive_context, pusTC_t
             else
             {
                 // Bad routing so TC non acknowleded
+                ConsolePrint("Invalid TC received (error code: %d)\n", PUS_ACCEPTANCE_INVALID_ROUTE);
                 (void)SendAcptNackTM(tc, acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_INVALID_ROUTE);
                 return_value = RET_ERROR;
             }
@@ -399,6 +412,7 @@ static returnCode_t ProcessValidTC(pusReceiveContext_t *receive_context, pusTC_t
         else
         {
             // Can't format so TC non acknowleded
+            ConsolePrint("Invalid TC received (error code: %d)\n", PUS_ACCEPTANCE_CANT_FORMAT);
             (void)SendAcptNackTM(tc, acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_CANT_FORMAT);
             return_value = RET_ERROR;
         }
