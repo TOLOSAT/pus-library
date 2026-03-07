@@ -47,9 +47,9 @@ returnCode_t ExecuteS9SS128(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
 
         if ((tc->spp_header.packet_data_length + 1u) == (TC_HEADER_SIZE + CUC_TIME_SIZE + CRC_TRAILER_SIZE))
         {
-            time_t upcoming_time;
+            // Get upcoming time value from data field
+            time_t upcoming_time = BIG_ENDIAN_ARRAY_TO_UINT64(tc->data);
             // Update upcoming_time value with data field
-            BIG_ENDIAN_ARRAY_TO_UINT64(tc->data, upcoming_time);
             returnCode_t set_time_status = SetTime(upcoming_time);
             if (set_time_status != RET_SUCCESSFUL)
             {

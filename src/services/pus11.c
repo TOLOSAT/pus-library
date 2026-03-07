@@ -305,8 +305,7 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
                         // Get Current time
                         time_t current_time = GetTime();
                         // Check if requested timestamp is in the futur
-                        time_t tc_timestamp = 0u;
-                        BIG_ENDIAN_ARRAY_TO_UINT64(&tc->data[offset], tc_timestamp);
+                        time_t tc_timestamp = BIG_ENDIAN_ARRAY_TO_UINT64(&tc->data[offset]);
                         if (current_time <= tc_timestamp)
                         {
                             pus11DataTableInfo_t pus11_table_info = { 0 };
