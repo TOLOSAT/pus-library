@@ -29,7 +29,6 @@ returnCode_t InitS3(pus3Env_t *pus3_env)
     // Check parameter(s)
     if (pus3_env != NULL)
     {
-
     }
     else
     {
@@ -68,28 +67,37 @@ returnCode_t ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
             // Get environment
             pus3Env_t *pus3_env = (pus3Env_t *)env;
 
-            // Get HKID
-            pus3HKID_t hkid = BIG_ENDIAN_ARRAY_TO_UINT32(tc->data);
-
-            // Look for a specific HK or every HK
-            if (hkid != 0)
+            // Check if pus3 is initialized
+            if (pus3_env->status == PUS_INITIALIZED)
             {
-                length_t lineno = 0;
-                // Search for HK Param
-                return_value = GetLinenoFromHKID(&pus3_env->pus3_hk_table, hkid, &lineno);
-                if (return_value == RET_SUCCESSFUL)
+                // Get HKID
+                pus3HKID_t hkid = BIG_ENDIAN_ARRAY_TO_UINT32(tc->data);
+
+                // Look for a specific HK or every HK
+                if (hkid != 0)
                 {
-                    // Enable the HK
-                    pus3_env->pus3_hk_table.entries[lineno].status = HK_REPORT_ENABLE;
+                    length_t lineno = 0;
+                    // Search for HK Param
+                    return_value = GetLinenoFromHKID(&pus3_env->pus3_hk_table, hkid, &lineno);
+                    if (return_value == RET_SUCCESSFUL)
+                    {
+                        // Enable the HK
+                        pus3_env->pus3_hk_table.entries[lineno].status = HK_REPORT_ENABLE;
+                    }
+                }
+                else
+                {
+                    // Enable every HK
+                    for (uint32_t i = 0u; i < pus3_env->pus3_hk_table.size; i++)
+                    {
+                        pus3_env->pus3_hk_table.entries[i].status = HK_REPORT_ENABLE;
+                    }
                 }
             }
             else
             {
-                // Enable every HK
-                for (uint32_t i = 0u; i < pus3_env->pus3_hk_table.size; i++)
-                {
-                    pus3_env->pus3_hk_table.entries[i].status = HK_REPORT_ENABLE;
-                }
+                return_value = RET_INVALID_PARAM;
+                *error_code  = PUS_EXECUTION_UNAVAILABLE;
             }
         }
         else
@@ -135,28 +143,37 @@ returnCode_t ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
             // Get environment
             pus3Env_t *pus3_env = (pus3Env_t *)env;
 
-            // Get HKID
-            pus3HKID_t hkid = BIG_ENDIAN_ARRAY_TO_UINT32(tc->data);
-
-            // Look for a specific HK or every HK
-            if (hkid != 0)
+            // Check if pus3 is initialized
+            if (pus3_env->status == PUS_INITIALIZED)
             {
-                length_t lineno = 0;
-                // Search for HK Param
-                return_value = GetLinenoFromHKID(&pus3_env->pus3_hk_table, hkid, &lineno);
-                if (return_value == RET_SUCCESSFUL)
+                // Get HKID
+                pus3HKID_t hkid = BIG_ENDIAN_ARRAY_TO_UINT32(tc->data);
+
+                // Look for a specific HK or every HK
+                if (hkid != 0)
                 {
-                    // Disable the HK
-                    pus3_env->pus3_hk_table.entries[lineno].status = HK_REPORT_DISABLE;
+                    length_t lineno = 0;
+                    // Search for HK Param
+                    return_value = GetLinenoFromHKID(&pus3_env->pus3_hk_table, hkid, &lineno);
+                    if (return_value == RET_SUCCESSFUL)
+                    {
+                        // Disable the HK
+                        pus3_env->pus3_hk_table.entries[lineno].status = HK_REPORT_DISABLE;
+                    }
+                }
+                else
+                {
+                    // Disable every HK
+                    for (uint32_t i = 0u; i < pus3_env->pus3_hk_table.size; i++)
+                    {
+                        pus3_env->pus3_hk_table.entries[i].status = HK_REPORT_DISABLE;
+                    }
                 }
             }
             else
             {
-                // Disable every HK
-                for (uint32_t i = 0u; i < pus3_env->pus3_hk_table.size; i++)
-                {
-                    pus3_env->pus3_hk_table.entries[i].status = HK_REPORT_DISABLE;
-                }
+                return_value = RET_INVALID_PARAM;
+                *error_code  = PUS_EXECUTION_UNAVAILABLE;
             }
         }
         else

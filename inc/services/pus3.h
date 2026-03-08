@@ -37,7 +37,7 @@ typedef uint32_t pus3HKID_t;
 typedef enum
 {
     HK_REPORT_DISABLE = 0u, /**< HK report disable */
-    HK_REPORT_ENABLE  = 1u, /* HK report enable */
+    HK_REPORT_ENABLE  = 1u, /**< HK report enable */
 } pus3HKStatus_t;
 
 /**
@@ -48,7 +48,7 @@ typedef struct
 {
     pus3HKID_t hkid;          /**< @brief HK ID */
     pus3HKStatus_t status;    /**< @brief HK status */
-    uint32_t collection_rate; /*< @brief Collection rate (every x period) */
+    uint32_t collection_rate; /**< @brief Collection rate (every x period) */
     void *p_ddr;              /**< @brief Pointer to the HK data */
     length_t size;            /**< @brief Size of the HK data */
 } pus3HKParam_t;
@@ -69,6 +69,7 @@ typedef struct
  */
 typedef struct
 {
+    pusStatus_t status;          /**< @brief PUS3 environment status */
     tick_t period;               /**< @brief HKs sampling period */
     pus3HKTable_t pus3_hk_table; /**< @brief HK report parameter table */
     bufferNo_t buffer_hktm;      /**< @brief Buffer where the HKTM will be sent */

@@ -34,7 +34,7 @@
  */
 typedef struct
 {
-    pusContextStatus_t status;       /**< @brief Receive context status */
+    pusStatus_t status;       /**< @brief Receive context status */
     pusRoutingTable_t routing_table; /**< @brief Pointer to the routing table */
     uint32_t ref_rx;                 /**< @brief Resource where the TC come from */
     deviceType_t rx_type;            /**< @brief Type of resource used to receive the TC (e.g. buffer or peripheral) */
@@ -52,7 +52,7 @@ typedef struct
  */
 typedef struct
 {
-    pusContextStatus_t status;           /**< @brief Execution context status */
+    pusStatus_t status;           /**< @brief Execution context status */
     pusExecutionTable_t execution_table; /**< @brief Pointer to the execution table */
     bufferNo_t buffer_tc;                /**< @brief Buffer where the TC come from */
     bufferNo_t buffer_tm;                /**< @brief Buffer where the TM will be sent */
