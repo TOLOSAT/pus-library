@@ -272,7 +272,7 @@ returnCode_t ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
                 return_value = BuildS160SS18(tm, &context);
                 if (return_value != RET_SUCCESSFUL)
                 {
-                    *error_code = PUS_EXECUTION_FAILED;
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
                 }
             }
         }
@@ -327,7 +327,7 @@ returnCode_t ExecuteS160SS19(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
                 return_value = BuildS160SS20(tm, &context);
                 if (return_value != RET_SUCCESSFUL)
                 {
-                    *error_code = PUS_EXECUTION_FAILED;
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
                 }
             }
         }
@@ -381,7 +381,7 @@ returnCode_t ExecuteS160SS21(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
                 return_value = BuildS160SS22(tm, &context);
                 if (return_value != RET_SUCCESSFUL)
                 {
-                    *error_code = PUS_EXECUTION_FAILED;
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
                 }
             }
         }

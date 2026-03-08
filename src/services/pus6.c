@@ -243,6 +243,10 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
             if (return_value == RET_SUCCESSFUL)
             {
                 return_value = BuildTM(tm, 6u, 4u, (pusData_t *)dumped_data, dumped_data_size);
+                if (return_value != RET_SUCCESSFUL)
+                {
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                }
             }
 
             // Then close the device anyway (to avoid blocking the resource)

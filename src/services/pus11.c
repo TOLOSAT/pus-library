@@ -35,8 +35,8 @@ static returnCode_t SetDataFromTable(pus11Env_t *pus11_env, pus11Data_t *pus11_d
 
 /**
  * @fn          InitS11(pus11Env_t *pus11_env)
- * @brief       This function init pus 11 files
- * @param[in]   pus11_env PUS11 context used for configuration
+ * @brief       This function initialises a pus11 environment
+ * @param[in]   pus11_env PUS11 environment used for configuration
  * @retval      #RET_SUCCESSFUL always
  */
 returnCode_t InitS11(pus11Env_t *pus11_env)
