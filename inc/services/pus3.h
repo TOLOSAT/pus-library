@@ -25,20 +25,19 @@
 
 /***************************** Macros Definitions ****************************/
 
+#define HK_REPORT_DISABLE 0u /**< HK report disable */
+#define HK_REPORT_ENABLE  1u /**< HK report enable */
+
 /***************************** Types Definitions *****************************/
 
 /** @brief PUS3 HK ID type definition */
-typedef uint32_t pus3HKID_t;
+typedef uint16_t pus3HKID_t;
 
-/**
- * @enum    pus3HKStatus_t
- * @brief   PUS3 HK report status type definition
- */
-typedef enum
-{
-    HK_REPORT_DISABLE = 0u, /**< HK report disable */
-    HK_REPORT_ENABLE  = 1u, /**< HK report enable */
-} pus3HKStatus_t;
+/** @brief PUS3 HK status type definition */
+typedef uint16_t pus3HKStatus_t;
+
+/** @brief PUS3 HK collection rate type definition */
+typedef uint16_t pus3HKRate_t;
 
 /**
  * @struct  pus3HKParam_t
@@ -46,12 +45,12 @@ typedef enum
  */
 typedef struct
 {
-    pus3HKID_t hkid;          /**< @brief HK ID */
-    pus3HKStatus_t status;    /**< @brief HK status */
-    uint32_t collection_rate; /**< @brief Collection rate (every x period) */
-    void *p_ddr;              /**< @brief Pointer to the HK data */
-    length_t size;            /**< @brief Size of the HK data */
-} pus3HKParam_t;
+    pus3HKID_t hkid;              /**< @brief HK ID */
+    pus3HKStatus_t status;        /**< @brief HK status */
+    pus3HKRate_t collection_rate; /**< @brief Collection rate (every x period) */
+    void *p_ddr;                  /**< @brief Pointer to the HK data */
+    length_t size;                /**< @brief Size of the HK data */
+} ATTR_BYTE_ALIGNED pus3HKParam_t;
 
 /**
  * @struct  pus3HKTable_t
@@ -70,7 +69,6 @@ typedef struct
 typedef struct
 {
     pusStatus_t status;          /**< @brief PUS3 environment status */
-    tick_t period;               /**< @brief HKs sampling period */
     pus3HKTable_t pus3_hk_table; /**< @brief HK report parameter table */
     bufferNo_t buffer_hktm;      /**< @brief Buffer where the HKTM will be sent */
     deviceNo_t dev_hktm;         /**< @brief Device bound to the HKTM buffer */
