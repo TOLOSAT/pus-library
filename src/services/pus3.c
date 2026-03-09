@@ -8,6 +8,8 @@
 
 /******************************* Include Files *******************************/
 
+#include <string.h>
+
 #include "kernel.h"
 #include "tm_management.h"
 #include "services/pus3.h"
@@ -27,9 +29,9 @@ static returnCode_t GetLinenoFromHKID(pus3HKTable_t *table, pus3HKID_t hkid, len
  * @brief           This function initializes a PUS3 environment
  * @param[in,out]   pus3_env PUS3 environment
  * @retval          #RET_INVALID_PARAM if pus3_env is a null pointer
- * @retval          #RET_INVALID_PARAM if pus3_hk_table is empty or size is zero
+ * @retval          #RET_INVALID_PARAM if hk_table is empty or size is zero
  * @retval          #RET_INVALID_PARAM if a pus3 entry is invalid (null size, null pointer or null collection rate)
- * @retval          #RET_INVALID_PARAM if pus3_hk_table entries are not ordered by hkid
+ * @retval          #RET_INVALID_PARAM if hk_table entries are not ordered by hkid
  * @retval          #RET_ERROR if DeviceOpen encountered an error
  * @retval          #RET_SUCCESSFUL else
  */
@@ -38,31 +40,37 @@ returnCode_t InitS3(pus3Env_t *pus3_env)
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Check parameter(s)
-    if ((pus3_env != NULL) && (pus3_env->pus3_hk_table.size != 0u) && (pus3_env->pus3_hk_table.entries != NULL))
+    if ((pus3_env != NULL) && (pus3_env->hk_table.size != 0u) && (pus3_env->hk_table.entries != NULL))
     {
         // Open device for hktm
         return_value = DeviceOpen(&pus3_env->dev_hktm, DEVICE_TYPE_BUFFER, pus3_env->buffer_hktm);
         if (return_value == RET_SUCCESSFUL)
         {
             // First check the first HK entry and then all of them (checking order requires to look at the first elements independently)
-            if ((pus3_env->pus3_hk_table.entries[0].hkid != 0u)               // HKID must be non zero
-                || (pus3_env->pus3_hk_table.entries[0].collection_rate != 0u) // Collection rate must be non zero
-                || (pus3_env->pus3_hk_table.entries[0].size != 0u)            // Size must be non zero
-                || (pus3_env->pus3_hk_table.entries[0].p_ddr != NULL))        // Pointer must be non null
+            if ((pus3_env->hk_table.entries[0].hkid != 0u)                                         // HKID must be non zero
+                && (pus3_env->hk_table.entries[0].collection_rate != 0u)                           // Collection rate must be non zero
+                && (pus3_env->hk_table.entries[0].size != 0u)                                      // Size must be non zero
+                && (pus3_env->hk_table.entries[0].size <= (TM_MAX_DATA_SIZE - sizeof(pus3HKID_t))) // Size must be less than max data size
+                && (pus3_env->hk_table.entries[0].p_addr != NULL))                                  // Pointer must be non null
             {
                 uint32_t i = 1u; // First entry already has been checked
                 // Check all remaining entries
-                while ((return_value == RET_SUCCESSFUL) && (i < pus3_env->pus3_hk_table.size))
+                while ((return_value == RET_SUCCESSFUL) && (i < pus3_env->hk_table.size))
                 {
                     // Check entry
-                    if ((pus3_env->pus3_hk_table.entries[i].hkid > pus3_env->pus3_hk_table.entries[i - 1u].hkid) // HKID should be increasing
-                        || (pus3_env->pus3_hk_table.entries[i].collection_rate != 0u)                            // Collection rate must be non zero
-                        || (pus3_env->pus3_hk_table.entries[i].size != 0u)                                       // Size must be non zero
-                        || (pus3_env->pus3_hk_table.entries[i].p_ddr != NULL))                                   // Pointer must be non null
+                    if ((pus3_env->hk_table.entries[i].hkid > pus3_env->hk_table.entries[i - 1u].hkid)     // HKID should be increasing
+                        && (pus3_env->hk_table.entries[i].collection_rate != 0u)                           // Collection rate must be non zero
+                        && (pus3_env->hk_table.entries[i].size != 0u)                                      // Size must be non zero
+                        && (pus3_env->hk_table.entries[i].size <= (TM_MAX_DATA_SIZE - sizeof(pus3HKID_t))) // Size must be less than max data size
+                        && (pus3_env->hk_table.entries[i].p_addr != NULL))                                  // Pointer must be non null
+                    {
+                        // Go to next entry
+                        i++;
+                    }
+                    else
                     {
                         return_value = RET_INVALID_PARAM;
                     }
-                    i++;
                 }
 
                 // If everything went well, initialize the environment and reset the cycle counter
@@ -77,6 +85,62 @@ returnCode_t InitS3(pus3Env_t *pus3_env)
                 return_value = RET_INVALID_PARAM;
             }
         }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
+ * @fn          EmitHKs(pus3Env_t *pus3_env)
+ * @brief       Function that is call every period to emit housekeeping TMs
+ * @param[in]   pus3_env pus3_env PUS3 environment
+ * @retval      #RET_INVALID_PARAM if pus3_env is null or not initialized
+ * @retval      #RET_ERROR if Building or sending the TM encounters an error
+ * @retval      #RET_SUCCESSFUL else
+ */
+returnCode_t EmitHKs(pus3Env_t *pus3_env)
+{
+    returnCode_t return_value        = RET_SUCCESSFUL;
+    pusTM_t tm                       = { 0 };
+    pusData_t data[TM_MAX_DATA_SIZE] = { 0 };
+
+    if ((pus3_env != NULL) && (pus3_env->status == PUS_INITIALIZED))
+    {
+        uint32_t i = 0u;
+        // For every HK param in the hk_table, verify if a HKTM needs to be emitted
+        while ((return_value == RET_SUCCESSFUL) && (i < pus3_env->hk_table.size))
+        {
+            if ((pus3_env->cycle % pus3_env->hk_table.entries[i].collection_rate) == 0u)
+            {
+                // Retrieve data for the HKTM
+                (void)memcpy(&data, (void *)&pus3_env->hk_table.entries[i].hkid, sizeof(pus3HKID_t));
+                (void)memcpy(&data, pus3_env->hk_table.entries[i].p_addr, pus3_env->hk_table.entries[i].size);
+                return_value = BuildTM(&tm, 3u, 25u, (pusData_t *)&data, sizeof(pus3HKID_t) + pus3_env->hk_table.entries[i].size);
+                if (return_value == RET_SUCCESSFUL)
+                {
+                    // Emit the TM
+                    return_value = DeviceWrite(pus3_env->dev_hktm, (data_t)&tm, TM_MAX_SIZE);
+                    if (return_value == RET_SUCCESSFUL)
+                    {
+                        taskNo_t tm_sender = NO_TASK;
+                        ConsolePrint("HKTM(3,25) has been sent\n");
+                        return_value = DeviceIoctl(pus3_env->dev_hktm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
+                        if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
+                        {
+                            return_value = SendSignal(tm_sender, SIGNAL_TC);
+                        }
+                    }
+                }
+            }
+            i++;
+        }
+
+        // Finaly increment cycle counter
+        pus3_env->cycle++;
     }
     else
     {
@@ -128,19 +192,19 @@ returnCode_t ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
                 {
                     length_t lineno = 0;
                     // Search for HK Param
-                    return_value = GetLinenoFromHKID(&pus3_env->pus3_hk_table, hkid, &lineno);
+                    return_value = GetLinenoFromHKID(&pus3_env->hk_table, hkid, &lineno);
                     if (return_value == RET_SUCCESSFUL)
                     {
                         // Enable the HK
-                        pus3_env->pus3_hk_table.entries[lineno].status = HK_REPORT_ENABLE;
+                        pus3_env->hk_table.entries[lineno].status = HK_REPORT_ENABLE;
                     }
                 }
                 else
                 {
                     // Enable every HK
-                    for (uint32_t i = 0u; i < pus3_env->pus3_hk_table.size; i++)
+                    for (uint32_t i = 0u; i < pus3_env->hk_table.size; i++)
                     {
-                        pus3_env->pus3_hk_table.entries[i].status = HK_REPORT_ENABLE;
+                        pus3_env->hk_table.entries[i].status = HK_REPORT_ENABLE;
                     }
                 }
             }
@@ -206,19 +270,19 @@ returnCode_t ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
                 {
                     length_t lineno = 0;
                     // Search for HK Param
-                    return_value = GetLinenoFromHKID(&pus3_env->pus3_hk_table, hkid, &lineno);
+                    return_value = GetLinenoFromHKID(&pus3_env->hk_table, hkid, &lineno);
                     if (return_value == RET_SUCCESSFUL)
                     {
                         // Disable the HK
-                        pus3_env->pus3_hk_table.entries[lineno].status = HK_REPORT_DISABLE;
+                        pus3_env->hk_table.entries[lineno].status = HK_REPORT_DISABLE;
                     }
                 }
                 else
                 {
                     // Disable every HK
-                    for (uint32_t i = 0u; i < pus3_env->pus3_hk_table.size; i++)
+                    for (uint32_t i = 0u; i < pus3_env->hk_table.size; i++)
                     {
-                        pus3_env->pus3_hk_table.entries[i].status = HK_REPORT_DISABLE;
+                        pus3_env->hk_table.entries[i].status = HK_REPORT_DISABLE;
                     }
                 }
             }
@@ -281,23 +345,23 @@ returnCode_t ExecuteS3SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
                 {
                     length_t lineno = 0;
                     // Search for HK Param
-                    return_value = GetLinenoFromHKID(&pus3_env->pus3_hk_table, hkid, &lineno);
+                    return_value = GetLinenoFromHKID(&pus3_env->hk_table, hkid, &lineno);
                     if (return_value == RET_SUCCESSFUL)
                     {
                         // Dumps into the TM the HK report parameter
-                        return_value = BuildTM(tm, 3u, 10u, (pusData_t *)&pus3_env->pus3_hk_table.entries[lineno], sizeof(pus3HKParam_t));
+                        return_value = BuildTM(tm, 3u, 10u, (pusData_t *)&pus3_env->hk_table.entries[lineno], sizeof(pus3HKParam_t));
                         if (return_value != RET_SUCCESSFUL)
                         {
-                            *error_code  = PUS_EXECUTION_TM_BUILDING_FAILED;
+                            *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
                         }
                     }
                 }
                 else
                 {
                     // Disable every HK
-                    for (uint32_t i = 0u; i < pus3_env->pus3_hk_table.size; i++)
+                    for (uint32_t i = 0u; i < pus3_env->hk_table.size; i++)
                     {
-                        pus3_env->pus3_hk_table.entries[i].status = HK_REPORT_DISABLE;
+                        pus3_env->hk_table.entries[i].status = HK_REPORT_DISABLE;
                     }
                 }
             }
@@ -364,11 +428,11 @@ returnCode_t ExecuteS3SS31(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
                 {
                     length_t lineno = 0;
                     // Search for HK Param
-                    return_value = GetLinenoFromHKID(&pus3_env->pus3_hk_table, hkid, &lineno);
+                    return_value = GetLinenoFromHKID(&pus3_env->hk_table, hkid, &lineno);
                     if (return_value == RET_SUCCESSFUL)
                     {
                         // Setup collection rate
-                        pus3_env->pus3_hk_table.entries[lineno].collection_rate = collection_rate;
+                        pus3_env->hk_table.entries[lineno].collection_rate = collection_rate;
                     }
                 }
                 else

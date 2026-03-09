@@ -48,7 +48,7 @@ typedef struct
     pus3HKID_t hkid;              /**< @brief HK ID */
     pus3HKStatus_t status;        /**< @brief HK status */
     pus3HKRate_t collection_rate; /**< @brief Collection rate (every x period) */
-    void *p_ddr;                  /**< @brief Pointer to the HK data */
+    void *p_addr;                 /**< @brief Pointer to the HK data */
     length_t size;                /**< @brief Size of the HK data */
 } ATTR_BYTE_ALIGNED pus3HKParam_t;
 
@@ -68,11 +68,11 @@ typedef struct
  */
 typedef struct
 {
-    pusStatus_t status;          /**< @brief PUS3 environment status */
-    pus3HKTable_t pus3_hk_table; /**< @brief HK report parameter table */
-    bufferNo_t buffer_hktm;      /**< @brief Buffer where the HKTM will be sent */
-    deviceNo_t dev_hktm;         /**< @brief Device bound to the HKTM buffer */
-    uint32_t cycle;              /**< @brief Current cycle */
+    pusStatus_t status;     /**< @brief PUS3 environment status */
+    pus3HKTable_t hk_table; /**< @brief HK report parameter table */
+    bufferNo_t buffer_hktm; /**< @brief Buffer where the HKTM will be sent */
+    deviceNo_t dev_hktm;    /**< @brief Device bound to the HKTM buffer */
+    uint32_t cycle;         /**< @brief Current cycle */
 } pus3Env_t;
 
 /*************************** Variables Declarations **************************/
