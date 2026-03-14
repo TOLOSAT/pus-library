@@ -114,11 +114,11 @@ returnCode_t EmitHKs(pus3Env_t *pus3_env)
         // For every HK param in the hk_table, verify if a HKTM needs to be emitted
         while ((return_value == RET_SUCCESSFUL) && (i < pus3_env->hk_table.size))
         {
-            if ((pus3_env->cycle % pus3_env->hk_table.entries[i].collection_rate) == 0u)
+            if (((pus3_env->cycle % pus3_env->hk_table.entries[i].collection_rate) == 0u) && (pus3_env->hk_table.entries[i].status == HK_REPORT_ENABLE))
             {
                 // Retrieve data for the HKTM
-                (void)memcpy(&data, (void *)&pus3_env->hk_table.entries[i].hkid, sizeof(pus3HKID_t));
-                (void)memcpy(&data, pus3_env->hk_table.entries[i].p_addr, pus3_env->hk_table.entries[i].size);
+                (void)memcpy(&data[0], (void *)&pus3_env->hk_table.entries[i].hkid, sizeof(pus3HKID_t));
+                (void)memcpy(&data[sizeof(pus3HKID_t)], pus3_env->hk_table.entries[i].p_addr, pus3_env->hk_table.entries[i].size);
                 return_value = BuildTM(&tm, 3u, 25u, (pusData_t *)&data, sizeof(pus3HKID_t) + pus3_env->hk_table.entries[i].size);
                 if (return_value == RET_SUCCESSFUL)
                 {
