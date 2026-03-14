@@ -49,7 +49,7 @@ returnCode_t ExecuteS17SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         return_value = BuildTM(tm, 17u, 2u, NULL, 0);
         if (return_value != RET_SUCCESSFUL)
         {
-            *error_code  = PUS_EXECUTION_TM_BUILDING_FAILED;
+            *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
         }
     }
     else

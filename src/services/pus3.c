@@ -51,7 +51,7 @@ returnCode_t InitS3(pus3Env_t *pus3_env)
                 && (pus3_env->hk_table.entries[0].collection_rate != 0u)                           // Collection rate must be non zero
                 && (pus3_env->hk_table.entries[0].size != 0u)                                      // Size must be non zero
                 && (pus3_env->hk_table.entries[0].size <= (TM_MAX_DATA_SIZE - sizeof(pus3HKID_t))) // Size must be less than max data size
-                && (pus3_env->hk_table.entries[0].p_addr != NULL))                                  // Pointer must be non null
+                && (pus3_env->hk_table.entries[0].p_addr != NULL))                                 // Pointer must be non null
             {
                 uint32_t i = 1u; // First entry already has been checked
                 // Check all remaining entries
@@ -62,7 +62,7 @@ returnCode_t InitS3(pus3Env_t *pus3_env)
                         && (pus3_env->hk_table.entries[i].collection_rate != 0u)                           // Collection rate must be non zero
                         && (pus3_env->hk_table.entries[i].size != 0u)                                      // Size must be non zero
                         && (pus3_env->hk_table.entries[i].size <= (TM_MAX_DATA_SIZE - sizeof(pus3HKID_t))) // Size must be less than max data size
-                        && (pus3_env->hk_table.entries[i].p_addr != NULL))                                  // Pointer must be non null
+                        && (pus3_env->hk_table.entries[i].p_addr != NULL))                                 // Pointer must be non null
                     {
                         // Go to next entry
                         i++;
@@ -114,7 +114,8 @@ returnCode_t EmitHKs(pus3Env_t *pus3_env)
         // For every HK param in the hk_table, verify if a HKTM needs to be emitted
         while ((return_value == RET_SUCCESSFUL) && (i < pus3_env->hk_table.size))
         {
-            if (((pus3_env->cycle % pus3_env->hk_table.entries[i].collection_rate) == 0u) && (pus3_env->hk_table.entries[i].status == HK_REPORT_ENABLE))
+            if (((pus3_env->cycle % pus3_env->hk_table.entries[i].collection_rate) == 0u)
+                && (pus3_env->hk_table.entries[i].status == HK_REPORT_ENABLE))
             {
                 // Retrieve data for the HKTM
                 (void)memcpy(&data[0], (void *)&pus3_env->hk_table.entries[i].hkid, sizeof(pus3HKID_t));
