@@ -411,7 +411,7 @@ returnCode_t ExecuteS3SS31(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         // Error code Initialization
         *error_code = PUS_EXECUTION_NO_ERROR;
 
-        if ((tc->spp_header.packet_data_length + 1u) == (TC_HEADER_SIZE + sizeof(pus3HKID_t) + CRC_TRAILER_SIZE))
+        if ((tc->spp_header.packet_data_length + 1u) == (TC_HEADER_SIZE + sizeof(pus3HKID_t) + sizeof(pus3HKRate_t) + CRC_TRAILER_SIZE))
         {
             // Get environment
             pus3Env_t *pus3_env = (pus3Env_t *)env;

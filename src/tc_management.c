@@ -406,7 +406,6 @@ static returnCode_t ProcessValidTC(pusReceiveContext_t *receive_context, pusTC_t
                 // Bad routing so TC non acknowleded
                 ConsolePrint("Invalid TC received (error code: %d)\n", PUS_ACCEPTANCE_INVALID_ROUTE);
                 (void)SendAcptNackTM(tc, acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_INVALID_ROUTE);
-                return_value = RET_ERROR;
             }
         }
         else
