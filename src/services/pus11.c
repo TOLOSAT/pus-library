@@ -35,8 +35,8 @@ static returnCode_t SetDataFromTable(pus11Env_t *pus11_env, pus11Data_t *pus11_d
 
 /**
  * @fn          InitS11(pus11Env_t *pus11_env)
- * @brief       This function init pus 11 files
- * @param[in]   pus11_env PUS11 context used for configuration
+ * @brief       This function initialises a pus11 environment
+ * @param[in]   pus11_env PUS11 environment used for configuration
  * @retval      #RET_SUCCESSFUL always
  */
 returnCode_t InitS11(pus11Env_t *pus11_env)
@@ -44,47 +44,64 @@ returnCode_t InitS11(pus11Env_t *pus11_env)
     returnCode_t return_value = RET_SUCCESSFUL;
     length_t file_size        = 0;
 
-    // Then initialises the devices
-    return_value = DeviceOpen(&pus11_env->dev_pus11_schedule, DEVICE_TYPE_FILE, pus11_env->fil_pus11_schedule);
-    if (return_value == RET_SUCCESSFUL)
+    // Check parameter(s)
+    if (pus11_env != NULL)
     {
-        return_value = DeviceOpen(&pus11_env->dev_pus11_data, DEVICE_TYPE_FILE, pus11_env->fil_pus11_data);
+        // Then initialises the devices
+        return_value = DeviceOpen(&pus11_env->dev_pus11_schedule, DEVICE_TYPE_FILE, pus11_env->fil_pus11_schedule);
         if (return_value == RET_SUCCESSFUL)
         {
-            // Check if pus11 files are complete
-            return_value = DeviceIoctl(pus11_env->dev_pus11_schedule, IOCTL_FS_GET_SIZE, &file_size, sizeof(length_t));
+            return_value = DeviceOpen(&pus11_env->dev_pus11_data, DEVICE_TYPE_FILE, pus11_env->fil_pus11_data);
             if (return_value == RET_SUCCESSFUL)
             {
-                if (file_size == SCHEDULE_SIZE)
+                // Check if pus11 files are complete
+                return_value = DeviceIoctl(pus11_env->dev_pus11_schedule, IOCTL_FS_GET_SIZE, &file_size, sizeof(length_t));
+                if (return_value == RET_SUCCESSFUL)
                 {
-                    return_value = DeviceIoctl(pus11_env->dev_pus11_data, IOCTL_FS_GET_SIZE, &file_size, sizeof(length_t));
-                    if (return_value == RET_SUCCESSFUL)
+                    if (file_size == SCHEDULE_SIZE)
                     {
-                        if (file_size == PUS11_DATA_TABLE_SIZE)
+                        return_value = DeviceIoctl(pus11_env->dev_pus11_data, IOCTL_FS_GET_SIZE, &file_size, sizeof(length_t));
+                        if (return_value == RET_SUCCESSFUL)
                         {
-                            // Pus11 files are complete
-                            return_value = RET_SUCCESSFUL;
-                        }
-                        else
-                        {
-                            // Pus11 files are incomplete
-                            return_value = ResetScheduleAndData(pus11_env);
+                            if (file_size == PUS11_DATA_TABLE_SIZE)
+                            {
+                                // Pus11 files are complete
+                                return_value = RET_SUCCESSFUL;
+                            }
+                            else
+                            {
+                                // Pus11 files are incomplete
+                                return_value = ResetScheduleAndData(pus11_env);
+                            }
                         }
                     }
-                }
-                else
-                {
-                    // Pus11 files are incomplete
-                    return_value = ResetScheduleAndData(pus11_env);
+                    else
+                    {
+                        // Pus11 files are incomplete
+                        return_value = ResetScheduleAndData(pus11_env);
+                    }
                 }
             }
         }
-    }
 
-    // Then initialise delayed TC buffer device
-    if (return_value == RET_SUCCESSFUL)
+        // Then initialise delayed TC buffer device
+        if (return_value == RET_SUCCESSFUL)
+        {
+            return_value = DeviceOpen(&pus11_env->dev_delayed_tc, DEVICE_TYPE_BUFFER, pus11_env->buffer_delayed_tc);
+        }
+
+        if (return_value == RET_SUCCESSFUL)
+        {
+            pus11_env->status = PUS_INITIALIZED;
+        }
+        else
+        {
+            pus11_env->status = PUS_ERROR;
+        }
+    }
+    else
     {
-        return_value = DeviceOpen(&pus11_env->dev_delayed_tc, DEVICE_TYPE_BUFFER, pus11_env->buffer_delayed_tc);
+        return_value = RET_INVALID_PARAM;
     }
 
     return return_value;
@@ -105,25 +122,37 @@ returnCode_t ReleaseDelayedTC(pus11Env_t *pus11_env, time_t *next_tc_release_dat
     returnCode_t return_value = RET_SUCCESSFUL;
     pusTC_t delayed_tc        = { 0 };
 
-    // Check if pus11 is enabled
-    if ((pus11_env != NULL) && (pus11_env->pus11_status == PUS11_ENABLE))
+    // Check parameter(s)
+    if ((pus11_env != NULL) && (next_tc_release_date != NULL) && (pus11_env->status == PUS_INITIALIZED))
     {
-        // Get delayed TC if there is any
-        return_value = GetDelayedTC(pus11_env, &delayed_tc, next_tc_release_date);
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus11 is enabled
+        if (pus11_env->pus11_status == PUS11_ENABLE)
         {
-            // Delayed TC available, send it to TC receiver
-            return_value = DeviceWrite(pus11_env->dev_delayed_tc, (data_t)&delayed_tc, TC_MAX_SIZE);
+            // Get delayed TC if there is any
+            return_value = GetDelayedTC(pus11_env, &delayed_tc, next_tc_release_date);
             if (return_value == RET_SUCCESSFUL)
             {
-                taskNo_t tc_receiver = NO_TASK;
-                return_value         = DeviceIoctl(pus11_env->dev_delayed_tc, IOCTL_BUFFER_GET_RECEIVER, &tc_receiver, sizeof(taskNo_t));
-                if ((return_value == RET_SUCCESSFUL) && (tc_receiver != NO_TASK))
+                // Delayed TC available, send it to TC receiver
+                return_value = DeviceWrite(pus11_env->dev_delayed_tc, (data_t)&delayed_tc, TC_MAX_SIZE);
+                if (return_value == RET_SUCCESSFUL)
                 {
-                    return_value = SendSignal(tc_receiver, SIGNAL_NEW_TC);
+                    taskNo_t tc_receiver = NO_TASK;
+                    return_value         = DeviceIoctl(pus11_env->dev_delayed_tc, IOCTL_BUFFER_GET_RECEIVER, &tc_receiver, sizeof(taskNo_t));
+                    if ((return_value == RET_SUCCESSFUL) && (tc_receiver != NO_TASK))
+                    {
+                        return_value = SendSignal(tc_receiver, SIGNAL_NEW_TC);
+                    }
                 }
             }
         }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
     }
 
     return return_value;
@@ -156,8 +185,17 @@ returnCode_t ExecuteS11SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         // Get environment
         pus11Env_t *pus11_env = (pus11Env_t *)env;
 
-        // Enable PUS11
-        pus11_env->pus11_status = PUS11_ENABLE;
+        // Check if pus11 is initialized
+        if (pus11_env->status == PUS_INITIALIZED)
+        {
+            // Enable PUS11
+            pus11_env->pus11_status = PUS11_ENABLE;
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
+        }
     }
     else
     {
@@ -194,8 +232,17 @@ returnCode_t ExecuteS11SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         // Get environment
         pus11Env_t *pus11_env = (pus11Env_t *)env;
 
-        // Enable PUS11
-        pus11_env->pus11_status = PUS11_DISABLE;
+        // Check if pus11 is initialized
+        if (pus11_env->status == PUS_INITIALIZED)
+        {
+            // Enable PUS11
+            pus11_env->pus11_status = PUS11_DISABLE;
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
+        }
     }
     else
     {
@@ -233,12 +280,20 @@ returnCode_t ExecuteS11SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         // Get environment
         pus11Env_t *pus11_env = (pus11Env_t *)env;
 
-        // Reset pus11 files
-        returnCode_t test_reset = ResetScheduleAndData(pus11_env);
-        if (test_reset != RET_SUCCESSFUL)
+        // Check if pus11 is initialized
+        if (pus11_env->status == PUS_INITIALIZED)
         {
-            return_value = RET_NOT_AVAILABLE;
-            *error_code  = PUS_EXECUTION_FAILED;
+            // Reset pus11 files
+            returnCode_t test_reset = ResetScheduleAndData(pus11_env);
+            if (test_reset != RET_SUCCESSFUL)
+            {
+                return_value = RET_NOT_AVAILABLE;
+                *error_code  = PUS_EXECUTION_FAILED;
+            }
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
         }
     }
     else
@@ -278,8 +333,8 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         // Get environment
         pus11Env_t *pus11_env = (pus11Env_t *)env;
 
-        // Check if PUS11 is enable
-        if (pus11_env->pus11_status == PUS11_ENABLE)
+        // Check if PUS11 is initialized and enabled
+        if ((pus11_env->status == PUS_INITIALIZED) && (pus11_env->pus11_status == PUS11_ENABLE))
         {
             // Get the N number of data
             pusNField_t N   = ((pusNField_t)(tc->data[0]) << 8) | ((pusNField_t)(tc->data[1]));
@@ -380,7 +435,7 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
         else
         {
             return_value = RET_NOT_AVAILABLE;
-            *error_code  = PUS_EXECUTION_FAILED;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
         }
     }
     else

@@ -34,8 +34,8 @@
  */
 typedef struct
 {
-    softwareId_t software_id;       /**< Software ID to reboot to */
-    softwareState_t software_state; /**< Software state to reboot to */
+    softwareId_t software_id;       /**< @brief Software ID to reboot to */
+    softwareState_t software_state; /**< @brief Software state to reboot to */
 } ATTR_BYTE_ALIGNED softwareSelection_t;
 
 /**
@@ -44,11 +44,12 @@ typedef struct
  */
 typedef struct
 {
-    uint32_t nb_tasks;           /**< Number of task in the system */
-    deviceNo_t dev_reboot;       /**< Device for rebooting the system */
-    deviceNo_t dev_context;      /**< Device for reading system context */
-    deviceNo_t dev_system_usage; /**< Device for reading system usage */
-    deviceNo_t dev_task_usages;  /**< Device for reading task usages */
+    pusStatus_t status;          /**< @brief PUS160 environment status */
+    uint32_t nb_tasks;           /**< @brief Number of task in the system */
+    deviceNo_t dev_reboot;       /**< @brief Device for rebooting the system */
+    deviceNo_t dev_context;      /**< @brief Device for reading system context */
+    deviceNo_t dev_system_usage; /**< @brief Device for reading system usage */
+    deviceNo_t dev_task_usages;  /**< @brief Device for reading task usages */
 } pus160Env_t;
 
 /*************************** Variables Declarations **************************/
