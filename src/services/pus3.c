@@ -177,7 +177,8 @@ returnCode_t ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
         // Error code Initialization
         *error_code = PUS_EXECUTION_NO_ERROR;
 
-        if ((tc->spp_header.packet_data_length + 1u) == (TC_HEADER_SIZE + sizeof(pus3HKID_t) + CRC_TRAILER_SIZE))
+        // Check if the size of the TC could contain at least one HKID
+        if ((tc->spp_header.packet_data_length + 1u) >= (TC_HEADER_SIZE + sizeof(pusNField_t) + sizeof(pus3HKID_t) + CRC_TRAILER_SIZE))
         {
             // Get environment
             pus3Env_t *pus3_env = (pus3Env_t *)env;
@@ -185,27 +186,52 @@ returnCode_t ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
             // Check if pus3 is initialized
             if (pus3_env->status == PUS_INITIALIZED)
             {
-                // Get HKID
-                pus3HKID_t hkid = BIG_ENDIAN_ARRAY_TO_UINT16(tc->data);
+                uint32_t offset = sizeof(pusNField_t);
+                pusNField_t N   = BIG_ENDIAN_ARRAY_TO_UINT16(tc->data);
 
-                // Look for a specific HK or every HK
-                if (hkid != 0u)
+                // Get HKIDs from TC
+                pusNField_t i = 0u;
+                while ((return_value == RET_SUCCESSFUL) && (i < N))
                 {
-                    length_t lineno = 0;
-                    // Search for HK Param
-                    return_value = GetLinenoFromHKID(&pus3_env->hk_table, hkid, &lineno);
-                    if (return_value == RET_SUCCESSFUL)
+                    // Check that offset is not out of the bound
+                    if ((offset + sizeof(pus3HKID_t)) <= TC_MAX_DATA_SIZE)
                     {
-                        // Enable the HK
-                        pus3_env->hk_table.entries[lineno].status = HK_REPORT_ENABLE;
+                        // Get HKID
+                        pus3HKID_t hkid = BIG_ENDIAN_ARRAY_TO_UINT16(&tc->data[offset]);
+
+                        // Look for a specific HK or every HK
+                        if (hkid != 0u)
+                        {
+                            length_t lineno = 0;
+                            // Search for HK Param
+                            return_value = GetLinenoFromHKID(&pus3_env->hk_table, hkid, &lineno);
+                            if (return_value == RET_SUCCESSFUL)
+                            {
+                                // Enable the HK
+                                pus3_env->hk_table.entries[lineno].status = HK_REPORT_ENABLE;
+                            }
+                            else
+                            {
+                                *error_code = PUS_EXECUTION_UNEXPECTED_DATA;
+                            }
+                        }
+                        else
+                        {
+                            // Enable every HK
+                            for (uint32_t i = 0u; i < pus3_env->hk_table.size; i++)
+                            {
+                                pus3_env->hk_table.entries[i].status = HK_REPORT_ENABLE;
+                            }
+                        }
+
+                        // Update index and offset
+                        offset += sizeof(pus3HKID_t);
+                        i++;
                     }
-                }
-                else
-                {
-                    // Enable every HK
-                    for (uint32_t i = 0u; i < pus3_env->hk_table.size; i++)
+                    else
                     {
-                        pus3_env->hk_table.entries[i].status = HK_REPORT_ENABLE;
+                        return_value = RET_INVALID_PARAM;
+                        *error_code  = PUS_EXECUTION_UNEXPECTED_DATA;
                     }
                 }
             }
@@ -255,7 +281,8 @@ returnCode_t ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
         // Error code Initialization
         *error_code = PUS_EXECUTION_NO_ERROR;
 
-        if ((tc->spp_header.packet_data_length + 1u) == (TC_HEADER_SIZE + sizeof(pus3HKID_t) + CRC_TRAILER_SIZE))
+        // Check if the size of the TC could contain at least one HKID
+        if ((tc->spp_header.packet_data_length + 1u) >= (TC_HEADER_SIZE + sizeof(pusNField_t) + sizeof(pus3HKID_t) + CRC_TRAILER_SIZE))
         {
             // Get environment
             pus3Env_t *pus3_env = (pus3Env_t *)env;
@@ -263,27 +290,52 @@ returnCode_t ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
             // Check if pus3 is initialized
             if (pus3_env->status == PUS_INITIALIZED)
             {
-                // Get HKID
-                pus3HKID_t hkid = BIG_ENDIAN_ARRAY_TO_UINT16(tc->data);
+                uint32_t offset = sizeof(pusNField_t);
+                pusNField_t N   = BIG_ENDIAN_ARRAY_TO_UINT16(tc->data);
 
-                // Look for a specific HK or every HK
-                if (hkid != 0u)
+                // Get HKIDs from TC
+                pusNField_t i = 0u;
+                while ((return_value == RET_SUCCESSFUL) && (i < N))
                 {
-                    length_t lineno = 0;
-                    // Search for HK Param
-                    return_value = GetLinenoFromHKID(&pus3_env->hk_table, hkid, &lineno);
-                    if (return_value == RET_SUCCESSFUL)
+                    // Check that offset is not out of the bound
+                    if ((offset + sizeof(pus3HKID_t)) <= TC_MAX_DATA_SIZE)
                     {
-                        // Disable the HK
-                        pus3_env->hk_table.entries[lineno].status = HK_REPORT_DISABLE;
+                        // Get HKID
+                        pus3HKID_t hkid = BIG_ENDIAN_ARRAY_TO_UINT16(&tc->data[offset]);
+
+                        // Look for a specific HK or every HK
+                        if (hkid != 0u)
+                        {
+                            length_t lineno = 0;
+                            // Search for HK Param
+                            return_value = GetLinenoFromHKID(&pus3_env->hk_table, hkid, &lineno);
+                            if (return_value == RET_SUCCESSFUL)
+                            {
+                                // Disable the HK
+                                pus3_env->hk_table.entries[lineno].status = HK_REPORT_DISABLE;
+                            }
+                            else
+                            {
+                                *error_code = PUS_EXECUTION_UNEXPECTED_DATA;
+                            }
+                        }
+                        else
+                        {
+                            // Disable every HK
+                            for (uint32_t i = 0u; i < pus3_env->hk_table.size; i++)
+                            {
+                                pus3_env->hk_table.entries[i].status = HK_REPORT_DISABLE;
+                            }
+                        }
+
+                        // Update index and offset
+                        offset += sizeof(pus3HKID_t);
+                        i++;
                     }
-                }
-                else
-                {
-                    // Disable every HK
-                    for (uint32_t i = 0u; i < pus3_env->hk_table.size; i++)
+                    else
                     {
-                        pus3_env->hk_table.entries[i].status = HK_REPORT_DISABLE;
+                        return_value = RET_INVALID_PARAM;
+                        *error_code  = PUS_EXECUTION_UNEXPECTED_DATA;
                     }
                 }
             }
@@ -355,6 +407,10 @@ returnCode_t ExecuteS3SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
                         {
                             *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
                         }
+                    }
+                    else
+                    {
+                        *error_code = PUS_EXECUTION_UNEXPECTED_DATA;
                     }
                 }
                 else
@@ -434,6 +490,10 @@ returnCode_t ExecuteS3SS31(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
                     {
                         // Setup collection rate
                         pus3_env->hk_table.entries[lineno].collection_rate = collection_rate;
+                    }
+                    else
+                    {
+                        *error_code = PUS_EXECUTION_UNEXPECTED_DATA;
                     }
                 }
                 else
