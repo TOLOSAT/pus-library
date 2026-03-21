@@ -319,7 +319,7 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
                                     return_value = DeviceIoctl(execution_context->dev_tm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                                     if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                                     {
-                                        return_value = SendSignal(tm_sender, SIGNAL_TC);
+                                        return_value = SendSignal(tm_sender, SIGNAL_TM);
                                     }
                                 }
                             }
@@ -489,7 +489,7 @@ static returnCode_t SendAcptAckTM(const pusTC_t *tc, pusTM_t *acceptance_tm, dev
                 return_value       = DeviceIoctl(dev_ack, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                 if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                 {
-                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                    return_value = SendSignal(tm_sender, SIGNAL_TM);
                 }
             }
         }
@@ -530,7 +530,7 @@ static returnCode_t SendAcptNackTM(const pusTC_t *tc, pusTM_t *acceptance_tm, de
                 return_value       = DeviceIoctl(dev_ack, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                 if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                 {
-                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                    return_value = SendSignal(tm_sender, SIGNAL_TM);
                 }
             }
         }
@@ -570,7 +570,7 @@ static returnCode_t SendExecAckTM(const pusTC_t *tc, pusTM_t *execution_tm, devi
                 return_value       = DeviceIoctl(dev_ack, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                 if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                 {
-                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                    return_value = SendSignal(tm_sender, SIGNAL_TM);
                 }
             }
         }
@@ -611,7 +611,7 @@ static returnCode_t SendExecNackTM(const pusTC_t *tc, pusTM_t *execution_tm, dev
                 return_value       = DeviceIoctl(dev_ack, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                 if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                 {
-                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                    return_value = SendSignal(tm_sender, SIGNAL_TM);
                 }
             }
         }
