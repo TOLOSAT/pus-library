@@ -45,17 +45,15 @@ returnCode_t ExecuteS6SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
     // Check parameter(s)
     if ((tc != NULL) && (error_code != NULL))
     {
-        deviceNo_t temp_dev  = 0u;
-        pus6Base_t load_base = 0u;
-        pusNField_t N        = 0u;
-        uint32_t offset      = sizeof(pus6Base_t) + sizeof(pusNField_t);
+        deviceNo_t temp_dev = 0u;
+        uint32_t offset     = sizeof(pus6Base_t) + sizeof(pusNField_t);
 
         // Error code Initialization
         *error_code = PUS_EXECUTION_NO_ERROR;
 
         // Get base and N (number of data)
-        BIG_ENDIAN_ARRAY_TO_UINT16(tc->data, load_base);
-        BIG_ENDIAN_ARRAY_TO_UINT16(&tc->data[sizeof(pus6Base_t)], N);
+        pus6Base_t load_base = BIG_ENDIAN_ARRAY_TO_UINT16(tc->data);
+        pusNField_t N        = BIG_ENDIAN_ARRAY_TO_UINT16(&tc->data[sizeof(pus6Base_t)]);
 
         // First open a device for this file
         returnCode_t test_fs = DeviceOpen(&temp_dev, DEVICE_TYPE_FILE, load_base);
@@ -68,12 +66,9 @@ returnCode_t ExecuteS6SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
                 // Check the offset is not out of the bound and offset and length can be read
                 if ((offset + sizeof(pus6Offset_t) + sizeof(pus6Length_t)) < TC_MAX_DATA_SIZE)
                 {
-                    pus6Length_t load_length = 0u;
-                    pus6Offset_t load_offset = 0u;
-
                     // Get data dump size and offset
-                    BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset], load_offset);
-                    BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset + sizeof(pus6Offset_t)], load_length);
+                    pus6Offset_t load_offset = BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset]);
+                    pus6Length_t load_length = BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset + sizeof(pus6Offset_t)]);
 
                     // Then get data i size
                     uint32_t data_i_size = sizeof(pus6Offset_t) + sizeof(pus6Length_t) + load_length;
@@ -162,8 +157,6 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
     if ((tc != NULL) && (tm != NULL) && (error_code != NULL))
     {
         deviceNo_t temp_dev       = 0u;
-        pus6Base_t dump_base      = 0u;
-        pusNField_t N             = 0u;
         uint32_t offset           = sizeof(pus6Base_t) + sizeof(pusNField_t);
         length_t dumped_data_size = 0u;
 
@@ -171,8 +164,8 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
         *error_code = PUS_EXECUTION_NO_ERROR;
 
         // Get base and N (number of data)
-        BIG_ENDIAN_ARRAY_TO_UINT16(tc->data, dump_base);
-        BIG_ENDIAN_ARRAY_TO_UINT16(&tc->data[sizeof(pus6Base_t)], N);
+        pus6Base_t dump_base = BIG_ENDIAN_ARRAY_TO_UINT16(tc->data);
+        pusNField_t N        = BIG_ENDIAN_ARRAY_TO_UINT16(&tc->data[sizeof(pus6Base_t)]);
 
         // Copy them to the TM data
         (void)memcpy(&dumped_data[dumped_data_size], tc->data, sizeof(pus6Base_t) + sizeof(pusNField_t));
@@ -189,12 +182,9 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
                 // Check if the data offset and size will fit in the TM at this point
                 if ((dumped_data_size + sizeof(pus6Offset_t) + sizeof(pus6Length_t)) <= TM_MAX_DATA_SIZE)
                 {
-                    pus6Length_t dump_length = 0u;
-                    pus6Offset_t dump_offset = 0u;
-
                     // Get data dump size and offset
-                    BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset], dump_offset);
-                    BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset + sizeof(pus6Offset_t)], dump_length);
+                    pus6Offset_t dump_offset = BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset]);
+                    pus6Length_t dump_length = BIG_ENDIAN_ARRAY_TO_UINT32(&tc->data[offset + sizeof(pus6Offset_t)]);
 
                     // Copy them to the TM data
                     (void)memcpy(&dumped_data[dumped_data_size], &tc->data[offset], sizeof(pus6Offset_t) + sizeof(pus6Length_t));
@@ -253,6 +243,10 @@ returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
             if (return_value == RET_SUCCESSFUL)
             {
                 return_value = BuildTM(tm, 6u, 4u, (pusData_t *)dumped_data, dumped_data_size);
+                if (return_value != RET_SUCCESSFUL)
+                {
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                }
             }
 
             // Then close the device anyway (to avoid blocking the resource)

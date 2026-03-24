@@ -77,17 +77,17 @@ returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context)
             // Finally check everything went right
             if (device_status == RET_SUCCESSFUL)
             {
-                receive_context->status = PUS_CONTEXT_INITIALIZED;
+                receive_context->status = PUS_INITIALIZED;
             }
             else
             {
                 return_value            = RET_ERROR;
-                receive_context->status = PUS_CONTEXT_ERROR;
+                receive_context->status = PUS_ERROR;
             }
         }
         else
         {
-            receive_context->status = PUS_CONTEXT_ERROR;
+            receive_context->status = PUS_ERROR;
         }
     }
     else
@@ -117,7 +117,7 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
     pusTC_t tc                            = { 0 };
 
     // Check parameter(s)
-    if (receive_context->status == PUS_CONTEXT_INITIALIZED)
+    if (receive_context->status == PUS_INITIALIZED)
     {
         // First, check if a new TC has been received
         if (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL)
@@ -236,17 +236,17 @@ returnCode_t InitTCExecutionContext(pusExecutionContext_t *execution_context)
             // Finally check everything went right
             if (device_status == RET_SUCCESSFUL)
             {
-                execution_context->status = PUS_CONTEXT_INITIALIZED;
+                execution_context->status = PUS_INITIALIZED;
             }
             else
             {
                 return_value              = RET_ERROR;
-                execution_context->status = PUS_CONTEXT_ERROR;
+                execution_context->status = PUS_ERROR;
             }
         }
         else
         {
-            execution_context->status = PUS_CONTEXT_ERROR;
+            execution_context->status = PUS_ERROR;
         }
     }
     else
@@ -274,7 +274,7 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
     length_t nb_message       = 0u;
 
     // Check parameter(s)
-    if (execution_context->status == PUS_CONTEXT_INITIALIZED)
+    if (execution_context->status == PUS_INITIALIZED)
     {
         do
         {
@@ -319,7 +319,7 @@ returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
                                     return_value = DeviceIoctl(execution_context->dev_tm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                                     if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                                     {
-                                        return_value = SendSignal(tm_sender, SIGNAL_TC);
+                                        return_value = SendSignal(tm_sender, SIGNAL_TM);
                                     }
                                 }
                             }
@@ -406,7 +406,6 @@ static returnCode_t ProcessValidTC(pusReceiveContext_t *receive_context, pusTC_t
                 // Bad routing so TC non acknowleded
                 ConsolePrint("Invalid TC received (error code: %d)\n", PUS_ACCEPTANCE_INVALID_ROUTE);
                 (void)SendAcptNackTM(tc, acceptance_tm, receive_context->dev_ack, PUS_ACCEPTANCE_INVALID_ROUTE);
-                return_value = RET_ERROR;
             }
         }
         else
@@ -490,7 +489,7 @@ static returnCode_t SendAcptAckTM(const pusTC_t *tc, pusTM_t *acceptance_tm, dev
                 return_value       = DeviceIoctl(dev_ack, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                 if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                 {
-                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                    return_value = SendSignal(tm_sender, SIGNAL_TM);
                 }
             }
         }
@@ -531,7 +530,7 @@ static returnCode_t SendAcptNackTM(const pusTC_t *tc, pusTM_t *acceptance_tm, de
                 return_value       = DeviceIoctl(dev_ack, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                 if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                 {
-                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                    return_value = SendSignal(tm_sender, SIGNAL_TM);
                 }
             }
         }
@@ -571,7 +570,7 @@ static returnCode_t SendExecAckTM(const pusTC_t *tc, pusTM_t *execution_tm, devi
                 return_value       = DeviceIoctl(dev_ack, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                 if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                 {
-                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                    return_value = SendSignal(tm_sender, SIGNAL_TM);
                 }
             }
         }
@@ -612,7 +611,7 @@ static returnCode_t SendExecNackTM(const pusTC_t *tc, pusTM_t *execution_tm, dev
                 return_value       = DeviceIoctl(dev_ack, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                 if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                 {
-                    return_value = SendSignal(tm_sender, SIGNAL_TC);
+                    return_value = SendSignal(tm_sender, SIGNAL_TM);
                 }
             }
         }

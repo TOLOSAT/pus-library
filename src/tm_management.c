@@ -52,11 +52,11 @@ returnCode_t InitTMSendContext(pusSendContext_t *send_context)
         // If everything went right update context status
         if (device_status == RET_SUCCESSFUL)
         {
-            send_context->status = PUS_CONTEXT_INITIALIZED;
+            send_context->status = PUS_INITIALIZED;
         }
         else
         {
-            send_context->status = PUS_CONTEXT_ERROR;
+            send_context->status = PUS_ERROR;
         }
     }
     else
@@ -82,7 +82,7 @@ returnCode_t SendTM(pusSendContext_t *send_context)
     pusTM_t *tm               = send_context->tm; // Renaming for easier usage
 
     // Check parameter(s)
-    if (send_context->status == PUS_CONTEXT_INITIALIZED)
+    if (send_context->status == PUS_INITIALIZED)
     {
         // Read each buffer in the send_table
         uint32_t i = 0u;

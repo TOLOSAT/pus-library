@@ -96,6 +96,7 @@ ASSERT_SIZE(pus11DataTable_t, PUS11_DATA_TABLE_SIZE)
  */
 typedef struct
 {
+    pusStatus_t status;            /**< @brief PUS11 environment status */
     pus11Status_t pus11_status;    /**< @brief PUS11 status */
     bufferNo_t buffer_delayed_tc;  /**< @brief Buffer where the delayed TC will be pushed */
     deviceNo_t dev_delayed_tc;     /**< @brief Device bound to the delayed TC buffer */

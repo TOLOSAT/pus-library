@@ -26,15 +26,15 @@
 /***************************** Types Definitions *****************************/
 
 /**
- * @enum    pusContextStatus_t
- * @brief   Type enum use to indicates if this pus context is initialized or not
+ * @enum    pusStatus_t
+ * @brief   Type enum use to indicates if this pus context, environnement or service is initialized or not
  */
 typedef enum
 {
-    PUS_CONTEXT_NOT_INITIALIZED = 0u, /**< Context as been initialized */
-    PUS_CONTEXT_INITIALIZED     = 1u, /**< Context as not been initialized */
-    PUS_CONTEXT_ERROR           = 2u, /**< Context is in a error mode (not working anymore) */
-} pusContextStatus_t;
+    PUS_NOT_INITIALIZED = 0u, /**< PUS as been initialized */
+    PUS_INITIALIZED     = 1u, /**< PUS as not been initialized */
+    PUS_ERROR           = 2u, /**< PUS is in a error mode (not working anymore) */
+} pusStatus_t;
 
 /** @brief Size for table type */
 typedef uint32_t pusTableSize_t;

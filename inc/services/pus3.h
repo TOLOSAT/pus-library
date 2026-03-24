@@ -25,30 +25,66 @@
 
 /***************************** Macros Definitions ****************************/
 
-#define HOUSEKEEPING_ID_SIZE     4u                                              /**< HouseKeeping ID size */
-#define HOUSEKEEPING_DATA_SIZE   10u                                             /**< HouseKeeping data size */
-#define HOUSEKEEPING_REPORT_SIZE (HOUSEKEEPING_ID_SIZE + HOUSEKEEPING_DATA_SIZE) /**< HouseKeeping report size */
+#define HK_REPORT_DISABLE 0u /**< HK report disable */
+#define HK_REPORT_ENABLE  1u /**< HK report enable */
 
 /***************************** Types Definitions *****************************/
 
+/** @brief PUS3 HK ID type definition */
+typedef uint16_t pus3HKID_t;
+
+/** @brief PUS3 HK status type definition */
+typedef uint16_t pus3HKStatus_t;
+
+/** @brief PUS3 HK collection rate type definition */
+typedef uint16_t pus3HKRate_t;
+
 /**
- * @struct  housekeepingReport_t
- * @brief   Struct type for an housekeeping report
+ * @struct  pus3HKParam_t
+ * @brief   Struct type for a pus3 HK report parameter
  */
 typedef struct
 {
-    uint32_t HKID;                        /**< @brief HouseKeeping ID */
-    uint8_t data[HOUSEKEEPING_DATA_SIZE]; /**< @brief HouseKeeping data */
-} ATTR_BYTE_ALIGNED housekeepingReport_t;
-ASSERT_SIZE(housekeepingReport_t, HOUSEKEEPING_REPORT_SIZE)
+    pus3HKID_t hkid;              /**< @brief HK ID */
+    pus3HKStatus_t status;        /**< @brief HK status */
+    pus3HKRate_t collection_rate; /**< @brief Collection rate (every x period) */
+    void *p_addr;                 /**< @brief Pointer to the HK data */
+    length_t size;                /**< @brief Size of the HK data */
+} ATTR_BYTE_ALIGNED pus3HKParam_t;
+
+/**
+ * @struct  pus3HKTable_t
+ * @brief   Struct type for HK report parameter table
+ */
+typedef struct
+{
+    length_t size;          /**< @brief Number of rows (table size) */
+    pus3HKParam_t *entries; /**< @brief Pointer to the array of table rows */
+} pus3HKTable_t;
+
+/**
+ * @struct  pus3Env_t
+ * @brief   Struct type for a pus3 environment
+ */
+typedef struct
+{
+    pusStatus_t status;     /**< @brief PUS3 environment status */
+    pus3HKTable_t hk_table; /**< @brief HK report parameter table */
+    bufferNo_t buffer_hktm; /**< @brief Buffer where the HKTM will be sent */
+    deviceNo_t dev_hktm;    /**< @brief Device bound to the HKTM buffer */
+    uint32_t cycle;         /**< @brief Current cycle */
+} pus3Env_t;
 
 /*************************** Variables Declarations **************************/
 
 /*************************** Functions Declarations **************************/
 
-extern returnCode_t BuildS3SS25(pusTM_t *tm, housekeepingReport_t *report);
+extern returnCode_t InitS3(pus3Env_t *pus3_env);
+extern returnCode_t EmitHKs(pus3Env_t *pus3_env);
 extern returnCode_t ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 extern returnCode_t ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+extern returnCode_t ExecuteS3SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+extern returnCode_t ExecuteS3SS31(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 #endif /* PUS3_H */
 

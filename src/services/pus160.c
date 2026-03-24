@@ -67,6 +67,16 @@ returnCode_t InitS160(pus160Env_t *pus160_env)
             // Start S160 by opening a device for task usages virtual device
             return_value = DeviceOpen(&pus160_env->dev_task_usages, DEVICE_TYPE_SYSTEM, SYSDEV_TASK_USAGES);
         }
+
+        // Setup S160 environment status
+        if (return_value == RET_SUCCESSFUL)
+        {
+            pus160_env->status = PUS_INITIALIZED;
+        }
+        else
+        {
+            pus160_env->status = PUS_ERROR;
+        }
     }
     else
     {
@@ -90,11 +100,10 @@ returnCode_t ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
     context_t context         = { 0 };
 
     // Unused
-    (void)(tc);
     (void)(tm);
 
     // Check parameter(s)
-    if ((env != NULL) && (error_code != NULL))
+    if ((env != NULL) && (tc != NULL) && (error_code != NULL))
     {
         // Set error
         *error_code = PUS_EXECUTION_NO_ERROR;
@@ -102,30 +111,39 @@ returnCode_t ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Read the current context
-        return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
         {
-            // Get the current software state
-            if (tc->spp_header.packet_data_length == (sizeof(softwareState_t) + CRC_TRAILER_SIZE + TC_HEADER_SIZE - 1u))
+            // Read the current context
+            return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
+
+            if (return_value == RET_SUCCESSFUL)
             {
-                // Read software state from TC
-                (void)memcpy((uint8_t *)&context.state, tc->data, sizeof(softwareState_t));
-            }
-            else
-            {
-                // If the TC does not have the right size, we reboot to the safe software by default
-                context.state = SOFTWARE_STATE_SAFE;
+                // Get the current software state
+                if (tc->spp_header.packet_data_length == (sizeof(softwareState_t) + CRC_TRAILER_SIZE + TC_HEADER_SIZE - 1u))
+                {
+                    // Read software state from TC
+                    (void)memcpy((uint8_t *)&context.state, tc->data, sizeof(softwareState_t));
+                }
+                else
+                {
+                    // If the TC does not have the right size, we reboot to the safe software by default
+                    context.state = SOFTWARE_STATE_SAFE;
+                }
+
+                // Write the updated context
+                (void)DeviceWrite(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
             }
 
-            // Write the updated context
-            (void)DeviceWrite(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
+            // Reboot the system (this call is outside the if to ensure that even if there is a context error, we still try to reboot). Here we don't
+            // want any error to happen. The context read/write is tested in the bootloader side.
+            return_value = DeviceIoctl(pus160_env->dev_reboot, 0u, NULL, 0u);
         }
-
-        // Reboot the system (this call is outside the if to ensure that even if there is a context error, we still try to reboot). Here we don't want
-        // any error to happen. The context read/write is tested in the bootloader side.
-        return_value = DeviceIoctl(pus160_env->dev_reboot, 0u, NULL, 0u);
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
+        }
     }
     else
     {
@@ -149,11 +167,10 @@ returnCode_t ExecuteS160SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
     context_t context         = { 0 };
 
     // Unused
-    (void)(tc);
     (void)(tm);
 
     // Check parameter(s)
-    if ((env != NULL) && (error_code != NULL))
+    if ((env != NULL) && (tc != NULL) && (error_code != NULL))
     {
         // Set error
         *error_code = PUS_EXECUTION_NO_ERROR;
@@ -161,44 +178,53 @@ returnCode_t ExecuteS160SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Get context
-        return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
         {
-            // Get the current software state and software ID
-            if (tc->spp_header.packet_data_length == (sizeof(softwareSelection_t) + CRC_TRAILER_SIZE + TC_HEADER_SIZE - 1u))
+            // Get context
+            return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
+            if (return_value == RET_SUCCESSFUL)
             {
-                softwareSelection_t software_selection = { 0 };
-
-                // Read software selection from TC
-                (void)memcpy((uint8_t *)&software_selection, tc->data, sizeof(softwareSelection_t));
-
-                // Check the software state and update the context accordingly
-                if (software_selection.software_state == SOFTWARE_STATE_NOMINAL)
+                // Get the current software state and software ID
+                if (tc->spp_header.packet_data_length == (sizeof(softwareSelection_t) + CRC_TRAILER_SIZE + TC_HEADER_SIZE - 1u))
                 {
-                    context.nominal_software_id = software_selection.software_id;
-                }
-                else if (software_selection.software_state == SOFTWARE_STATE_SAFE)
-                {
-                    context.safe_software_id = software_selection.software_id;
+                    softwareSelection_t software_selection = { 0 };
+
+                    // Read software selection from TC
+                    (void)memcpy((uint8_t *)&software_selection, tc->data, sizeof(softwareSelection_t));
+
+                    // Check the software state and update the context accordingly
+                    if (software_selection.software_state == SOFTWARE_STATE_NOMINAL)
+                    {
+                        context.nominal_software_id = software_selection.software_id;
+                    }
+                    else if (software_selection.software_state == SOFTWARE_STATE_SAFE)
+                    {
+                        context.safe_software_id = software_selection.software_id;
+                    }
+                    else
+                    {
+                        *error_code  = PUS_EXECUTION_FAILED;
+                        return_value = RET_INVALID_PARAM;
+                    }
+
+                    if (return_value == RET_SUCCESSFUL)
+                    {
+                        // Write the updated context
+                        return_value = DeviceWrite(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
+                    }
                 }
                 else
                 {
                     *error_code  = PUS_EXECUTION_FAILED;
                     return_value = RET_INVALID_PARAM;
                 }
-
-                if (return_value == RET_SUCCESSFUL)
-                {
-                    // Write the updated context
-                    return_value = DeviceWrite(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-                }
             }
-            else
-            {
-                *error_code  = PUS_EXECUTION_FAILED;
-                return_value = RET_INVALID_PARAM;
-            }
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
         }
     }
     else
@@ -235,16 +261,25 @@ returnCode_t ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Get context
-        return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
         {
-            // Build S160S18 : full context
-            return_value = BuildS160SS18(tm, &context);
-            if (return_value != RET_SUCCESSFUL)
+            // Get context
+            return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
+            if (return_value == RET_SUCCESSFUL)
             {
-                *error_code = PUS_EXECUTION_FAILED;
+                // Build S160S18 : full context
+                return_value = BuildS160SS18(tm, &context);
+                if (return_value != RET_SUCCESSFUL)
+                {
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                }
             }
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
         }
     }
     else
@@ -281,16 +316,25 @@ returnCode_t ExecuteS160SS19(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Get context
-        return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
         {
-            // Build S160S20 : context without debug info
-            return_value = BuildS160SS20(tm, &context);
-            if (return_value != RET_SUCCESSFUL)
+            // Get context
+            return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
+            if (return_value == RET_SUCCESSFUL)
             {
-                *error_code = PUS_EXECUTION_FAILED;
+                // Build S160S20 : context without debug info
+                return_value = BuildS160SS20(tm, &context);
+                if (return_value != RET_SUCCESSFUL)
+                {
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                }
             }
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
         }
     }
     else
@@ -326,16 +370,25 @@ returnCode_t ExecuteS160SS21(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Get context
-        return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
         {
-            // Build S160S22 : error context only
-            return_value = BuildS160SS22(tm, &context);
-            if (return_value != RET_SUCCESSFUL)
+            // Get context
+            return_value = DeviceRead(pus160_env->dev_context, (data_t)&context, sizeof(context_t));
+            if (return_value == RET_SUCCESSFUL)
             {
-                *error_code = PUS_EXECUTION_FAILED;
+                // Build S160S22 : error context only
+                return_value = BuildS160SS22(tm, &context);
+                if (return_value != RET_SUCCESSFUL)
+                {
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                }
             }
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
         }
     }
     else
@@ -371,8 +424,17 @@ returnCode_t ExecuteS160SS23(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Reset the error context
-        return_value = DeviceIoctl(pus160_env->dev_context, 0u, NULL, 0u);
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
+        {
+            // Reset the error context
+            return_value = DeviceIoctl(pus160_env->dev_context, 0u, NULL, 0u);
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
+        }
     }
     else
     {
@@ -395,7 +457,6 @@ returnCode_t ExecuteS160SS33(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Unused
-    (void)(env);
     (void)(tc);
 
     // Check parameter(s)
@@ -409,20 +470,29 @@ returnCode_t ExecuteS160SS33(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Read system usage
-        return_value = DeviceRead(pus160_env->dev_system_usage, (data_t)&temp_system_usage, sizeof(systemUsage_t));
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
         {
-            // Build S161SS2 TM
-            return_value = BuildS160SS34(tm, temp_system_usage.idle_time);
-            if (return_value != RET_SUCCESSFUL)
+            // Read system usage
+            return_value = DeviceRead(pus160_env->dev_system_usage, (data_t)&temp_system_usage, sizeof(systemUsage_t));
+            if (return_value == RET_SUCCESSFUL)
             {
-                *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                // Build S161SS2 TM
+                return_value = BuildS160SS34(tm, temp_system_usage.idle_time);
+                if (return_value != RET_SUCCESSFUL)
+                {
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                }
+            }
+            else
+            {
+                *error_code = PUS_EXECUTION_FAILED;
             }
         }
         else
         {
-            *error_code = PUS_EXECUTION_FAILED;
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
         }
     }
     else
@@ -459,20 +529,29 @@ returnCode_t ExecuteS160SS35(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Read system usage
-        return_value = DeviceRead(pus160_env->dev_system_usage, (data_t)&temp_system_usage, sizeof(systemUsage_t));
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
         {
-            // Build S161SS4 TM
-            return_value = BuildS160SS36(tm, temp_system_usage.highest_stack_consumer, temp_system_usage.max_stack_usage);
-            if (return_value != RET_SUCCESSFUL)
+            // Read system usage
+            return_value = DeviceRead(pus160_env->dev_system_usage, (data_t)&temp_system_usage, sizeof(systemUsage_t));
+            if (return_value == RET_SUCCESSFUL)
             {
-                *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                // Build S161SS4 TM
+                return_value = BuildS160SS36(tm, temp_system_usage.highest_stack_consumer, temp_system_usage.max_stack_usage);
+                if (return_value != RET_SUCCESSFUL)
+                {
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                }
+            }
+            else
+            {
+                *error_code = PUS_EXECUTION_FAILED;
             }
         }
         else
         {
-            *error_code = PUS_EXECUTION_FAILED;
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
         }
     }
     else
@@ -509,20 +588,29 @@ returnCode_t ExecuteS160SS37(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
         // Get environment
         pus160Env_t *pus160_env = (pus160Env_t *)env;
 
-        // Read task usages
-        return_value = DeviceRead(pus160_env->dev_task_usages, (data_t)&temp_task_usages, sizeof(taskUsage_t) * pus160_env->nb_tasks);
-        if (return_value == RET_SUCCESSFUL)
+        // Check if pus160 is initialized
+        if (pus160_env->status == PUS_INITIALIZED)
         {
-            // Build S161SS4 TM
-            return_value = BuildS160SS38(tm, temp_task_usages, pus160_env->nb_tasks);
-            if (return_value != RET_SUCCESSFUL)
+            // Read task usages
+            return_value = DeviceRead(pus160_env->dev_task_usages, (data_t)&temp_task_usages, sizeof(taskUsage_t) * pus160_env->nb_tasks);
+            if (return_value == RET_SUCCESSFUL)
             {
-                *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                // Build S161SS4 TM
+                return_value = BuildS160SS38(tm, temp_task_usages, pus160_env->nb_tasks);
+                if (return_value != RET_SUCCESSFUL)
+                {
+                    *error_code = PUS_EXECUTION_TM_BUILDING_FAILED;
+                }
+            }
+            else
+            {
+                *error_code = PUS_EXECUTION_FAILED;
             }
         }
         else
         {
-            *error_code = PUS_EXECUTION_FAILED;
+            return_value = RET_INVALID_PARAM;
+            *error_code  = PUS_EXECUTION_UNAVAILABLE;
         }
     }
     else

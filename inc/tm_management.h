@@ -45,7 +45,7 @@ typedef struct
  */
 typedef struct
 {
-    pusContextStatus_t status;      /**< @brief Execution context status */
+    pusStatus_t status;             /**< @brief Execution context status */
     pusSendTable_t *send_table;     /**< @brief Pointer to the send table */
     pusTableSize_t send_table_size; /**< @brief Size of the execution table */
     uint32_t ref_tx;                /**< @brief resource where the TM will be sent */
