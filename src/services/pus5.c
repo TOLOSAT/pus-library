@@ -21,7 +21,7 @@
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          BuildS5SS1234(pusTM_t *tm, pusEventSeverity_t severity, eventReport_t *report)
+ * @fn          BuildS5SS1234(pusTM_t *tm, severityLevel_t severity, eventReport_t *report)
  * @brief       Function that send S5SS1, S5SS2, S5SS3 or S5SS4 TM (event report)
  * @param[out]  tm TM that will be sent
  * @param[in]   severity Severity of the event
@@ -30,12 +30,12 @@
  * @retval      #RET_ERROR if cannot build TM
  * @retval      #RET_SUCCESSFUL else
  */
-returnCode_t BuildS5SS1234(pusTM_t *tm, pusEventSeverity_t severity, eventReport_t *report)
+returnCode_t BuildS5SS1234(pusTM_t *tm, severityLevel_t severity, eventReport_t *report)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
     // Check parameter(s)
-    if ((tm != NULL) && (report != NULL) && (severity <= PUS5_HIGH_SEVERITY_EVENT))
+    if ((tm != NULL) && (report != NULL) && (severity <= SEVERITY_HIGH))
     {
         // Build TM
         return_value = BuildTM(tm, 5u, severity, (pusData_t *)report, EVENT_REPORT_SIZE);
