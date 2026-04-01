@@ -21,6 +21,7 @@
 
 /******************************* Include Files *******************************/
 
+#include "kernel_types.h"
 #include "pus_types.h"
 
 /***************************** Macros Definitions ****************************/
@@ -30,18 +31,6 @@
 #define EVENT_REPORT_SIZE (EVENT_ID_SIZE + EVENT_DATA_SIZE) /**< Event report size */
 
 /***************************** Types Definitions *****************************/
-
-/**
- * @enum    pusEventSeverity_t
- * @brief   PUS 5 event severity enum
- */
-typedef enum
-{
-    PUS5_INFORMATIVE_EVENT     = 0u, /**< Informative event */
-    PUS5_LOW_SEVERITY_EVENT    = 1u, /**< Low severity event */
-    PUS5_MEDIUM_SEVERITY_EVENT = 2u, /**< Medium severity event */
-    PUS5_HIGH_SEVERITY_EVENT   = 3u, /**< High severity event */
-} pusEventSeverity_t;
 
 /**
  * @struct  eventReport_t
@@ -58,7 +47,7 @@ ASSERT_SIZE(eventReport_t, EVENT_REPORT_SIZE)
 
 /*************************** Functions Declarations **************************/
 
-extern returnCode_t BuildS5SS1234(pusTM_t *tm, pusEventSeverity_t severity, eventReport_t *report);
+extern returnCode_t BuildS5SS1234(pusTM_t *tm, severityLevel_t severity, eventReport_t *report);
 
 #endif /* PUS5_H */
 
