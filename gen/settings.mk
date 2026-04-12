@@ -29,6 +29,14 @@ CFLAGS = -c \
 		-g3 -O0
 endif
 
+# Detect builds launched with GNU make parallel jobs.
+PARALLEL_BUILD = $(strip \
+	$(findstring --jobserver-auth,$(MAKEFLAGS)) \
+	$(findstring --jobserver-fds,$(MAKEFLAGS)) \
+	$(filter -j,$(MAKEFLAGS)) \
+	$(filter -j%,$(MAKEFLAGS)))
+QUIET_RECIPE = @true
+
 ##############################################
 ################### TOOLS ####################
 ##############################################

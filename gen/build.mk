@@ -29,13 +29,11 @@ INCFLAGS	= $(addprefix -I,$(INCDIRS))
 ##############################################
 
 .PHONY : build start end clean
-build: start $(LIB) end
+build: end
+end: $(LIB)
+$(OBJS): | start
 
-# Include dependencies
--include $(OBJS:.o=.d)
-
-# Build header
-start :
+define LIBRARY_START_VERBOSE
 	@echo "$(BOLD)=============================$(RESET)"
 	@echo "$(BOLD)===        LIBRARY        ===$(RESET)"
 	@echo "$(BOLD)=============================$(RESET)"
@@ -46,6 +44,19 @@ start :
 	@echo "$(YELLOW)Include Paths:$(RESET)"
 	@$(foreach dir,$(patsubst $(WORKSPACE)/%,%,$(INCDIRS)),echo "  - $(dir)";)
 	@echo "$(BLUE)Start building...$(RESET)"
+endef
+
+define LIBRARY_END_VERBOSE
+	@echo "$(BOLD)$(GREEN)Done.$(RESET)"
+	@echo ""
+endef
+
+# Include dependencies
+-include $(OBJS:.o=.d)
+
+# Build header
+start :
+	$(if $(PARALLEL_BUILD),$(QUIET_RECIPE),$(LIBRARY_START_VERBOSE))
 
 # Building recipes
 $(OBJDIR)/%.o : $(SRCDIR)/%.c
@@ -61,8 +72,7 @@ $(LIB) : $(OBJS)
 
 # Build footer
 end :
-	@echo "$(BOLD)$(GREEN)Done.$(RESET)"
-	@echo ""
+	$(if $(PARALLEL_BUILD),$(QUIET_RECIPE),$(LIBRARY_END_VERBOSE))
 
 # Clean recipe
 clean :
