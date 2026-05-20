@@ -123,12 +123,9 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
         if (receive_context->rx_type == DEVICE_TYPE_PERIPHERAL)
         {
             length_t write_index = 0u;
-            length_t counter     = 0u;
 
             // Check write index
-            return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_GET_RX_COUNT, &counter, sizeof(length_t));
-            // Flip counter to get write index
-            write_index = receive_context->rx_buffer_size - counter;
+            return_value = DeviceIoctl(receive_context->dev_rx, IOCTL_PERIPHERAL_GET_RX_COUNT, &write_index, sizeof(length_t));
 
             // While there is new data in the RX buffer, try to parse TCs
             while ((return_value == RET_SUCCESSFUL) && (write_index != receive_context->read_index))
