@@ -132,7 +132,7 @@ returnCode_t EmitHKs(pus3Env_t *pus3_env)
                         return_value = DeviceIoctl(pus3_env->dev_hktm, IOCTL_BUFFER_GET_RECEIVER, &tm_sender, sizeof(taskNo_t));
                         if ((return_value == RET_SUCCESSFUL) && (tm_sender != NO_TASK))
                         {
-                            return_value = SendSignal(tm_sender, SIGNAL_TC);
+                            return_value = SendSignal(tm_sender, SIGNAL_TM);
                         }
                     }
                 }
