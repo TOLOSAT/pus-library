@@ -19,11 +19,11 @@
 
 static returnCode_t GetAvailableNode(deviceNo_t schedule_deviceno, pusNodeIndex_t *available_node);
 static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *activity, pusNodeIndex_t new_node_index);
-static returnCode_t ReleaseOldestActivity(deviceNo_t schedule_deviceno, pusActivity_t *activity);
-static returnCode_t GetInfoFromSchedule(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info);
-static returnCode_t SetInfoFromSchedule(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info);
-static returnCode_t GetNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index);
-static returnCode_t SetNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index);
+static returnCode_t ReleaseNextActivity(deviceNo_t schedule_deviceno, pusActivity_t *activity);
+static returnCode_t ReadScheduleInfo(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info);
+static returnCode_t WriteScheduleInfo(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info);
+static returnCode_t ReadNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index);
+static returnCode_t WriteNodeToSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index);
 
 /*************************** Variables Definitions ***************************/
 
@@ -48,7 +48,7 @@ returnCode_t PushActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t 
     {
         pusScheduleInfo_t schedule_info = { 0 };
         // Check if there is still room in schedule
-        return_value = GetInfoFromSchedule(schedule_deviceno, &schedule_info);
+        return_value = ReadScheduleInfo(schedule_deviceno, &schedule_info);
         if (return_value == RET_SUCCESSFUL)
         {
             if (schedule_info.nb_activities < MAXIMUM_ACTIVITIES_PER_SCHEDULE)
@@ -97,7 +97,7 @@ returnCode_t PopActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *
     {
         pusScheduleInfo_t schedule_info = { 0 };
         // Get Schedule info
-        return_value = GetInfoFromSchedule(schedule_deviceno, &schedule_info);
+        return_value = ReadScheduleInfo(schedule_deviceno, &schedule_info);
         if (return_value == RET_SUCCESSFUL)
         {
             // Check if there is an activity in schedule
@@ -107,14 +107,14 @@ returnCode_t PopActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *
                 // Get current time
                 pusActivityNode_t oldest_node = { 0 };
                 // Get oldest node
-                return_value = GetNodeFromSchedule(schedule_deviceno, &oldest_node, schedule_info.oldest_activity_index);
+                return_value = ReadNodeFromSchedule(schedule_deviceno, &oldest_node, schedule_info.oldest_activity_index);
                 if (return_value == RET_SUCCESSFUL)
                 {
                     // Now check if oldest node can be released or not
                     if (oldest_node.activity.timestamp <= current_time)
                     {
                         // It means that oldest_node_time <= current_time so we can release activity
-                        return_value = ReleaseOldestActivity(schedule_deviceno, activity);
+                        return_value = ReleaseNextActivity(schedule_deviceno, activity);
                         if (return_value == RET_SUCCESSFUL)
                         {
                             // Update next_activity_date if non null
@@ -123,7 +123,7 @@ returnCode_t PopActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *
                                 // From the previous nb_activities (-1 because an activity has been pop) check if there is still an activity
                                 if ((schedule_info.nb_activities - 1u) > 0u)
                                 {
-                                    return_value = GetNodeFromSchedule(schedule_deviceno, &oldest_node, oldest_node.next_node_index);
+                                    return_value = ReadNodeFromSchedule(schedule_deviceno, &oldest_node, oldest_node.next_node_index);
                                     if (return_value == RET_SUCCESSFUL)
                                     {
                                         *next_activity_date = oldest_node.activity.timestamp;
@@ -190,7 +190,7 @@ static returnCode_t GetAvailableNode(deviceNo_t schedule_deviceno, pusNodeIndex_
     {
         pusScheduleInfo_t schedule_info = { 0 };
         // First get table info
-        return_value = GetInfoFromSchedule(schedule_deviceno, &schedule_info);
+        return_value = ReadScheduleInfo(schedule_deviceno, &schedule_info);
         if (return_value == RET_SUCCESSFUL)
         {
             // Initialize data variable and current write index
@@ -198,7 +198,7 @@ static returnCode_t GetAvailableNode(deviceNo_t schedule_deviceno, pusNodeIndex_
             pusNodeIndex_t current_write_index = schedule_info.write_index;
 
             // Get node at current write index
-            return_value = GetNodeFromSchedule(schedule_deviceno, &activity_node, current_write_index);
+            return_value = ReadNodeFromSchedule(schedule_deviceno, &activity_node, current_write_index);
 
             // Find a new slot if current slot is not available
             while ((return_value == RET_SUCCESSFUL) && (activity_node.status == (pusNodeIndex_t)ACTIVITY_NODE_UNAVAILABLE)
@@ -214,7 +214,7 @@ static returnCode_t GetAvailableNode(deviceNo_t schedule_deviceno, pusNodeIndex_
                 }
 
                 // Get New data slot
-                return_value = GetNodeFromSchedule(schedule_deviceno, &activity_node, current_write_index);
+                return_value = ReadNodeFromSchedule(schedule_deviceno, &activity_node, current_write_index);
             }
 
             // Check if no error occured
@@ -233,7 +233,7 @@ static returnCode_t GetAvailableNode(deviceNo_t schedule_deviceno, pusNodeIndex_
                     // Update available info
                     schedule_info.write_index = current_write_index + 1u;
                     // Send it to file
-                    return_value = SetInfoFromSchedule(schedule_deviceno, &schedule_info);
+                    return_value = WriteScheduleInfo(schedule_deviceno, &schedule_info);
                 }
             }
         }
@@ -264,7 +264,7 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
     {
         pusScheduleInfo_t schedule_info = { 0 };
         // Get schedule info
-        return_value = GetInfoFromSchedule(schedule_deviceno, &schedule_info);
+        return_value = ReadScheduleInfo(schedule_deviceno, &schedule_info);
         if (return_value == RET_SUCCESSFUL)
         {
             // Check if there is at least one node in schedule
@@ -280,13 +280,13 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                 new_activity_node.next_node_index     = UNEXISTING_NODE_INDEX;
 
                 // Update node
-                return_value = SetNodeFromSchedule(schedule_deviceno, &new_activity_node, new_node_index);
+                return_value = WriteNodeToSchedule(schedule_deviceno, &new_activity_node, new_node_index);
                 if (return_value == RET_SUCCESSFUL)
                 {
                     schedule_info.nb_activities++;
                     schedule_info.oldest_activity_index = new_node_index;
                     // Then update info
-                    return_value = SetInfoFromSchedule(schedule_deviceno, &schedule_info);
+                    return_value = WriteScheduleInfo(schedule_deviceno, &schedule_info);
                 }
             }
             else
@@ -299,13 +299,13 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                 uint32_t counter         = 0u;
 
                 // Start looking for the next node
-                return_value = GetNodeFromSchedule(schedule_deviceno, &activity_node, next_node);
+                return_value = ReadNodeFromSchedule(schedule_deviceno, &activity_node, next_node);
                 while ((return_value == RET_SUCCESSFUL) && (activity_node.activity.timestamp <= activity->timestamp)
                        && (activity_node.next_node_index != UNEXISTING_NODE_INDEX) && (counter < MAXIMUM_ACTIVITIES_PER_SCHEDULE))
                 {
                     // Update next node
                     next_node    = activity_node.next_node_index;
-                    return_value = GetNodeFromSchedule(schedule_deviceno, &activity_node, next_node);
+                    return_value = ReadNodeFromSchedule(schedule_deviceno, &activity_node, next_node);
 
                     // Increment counter (use to avoid a full turn)
                     counter++;
@@ -331,24 +331,24 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                             new_activity_node.next_node_index     = next_node;
 
                             // Update node
-                            return_value = SetNodeFromSchedule(schedule_deviceno, &new_activity_node, new_node_index);
+                            return_value = WriteNodeToSchedule(schedule_deviceno, &new_activity_node, new_node_index);
                             if (return_value == RET_SUCCESSFUL)
                             {
                                 activity_node.previous_node_index = new_node_index;
                                 // Update next node
-                                return_value = SetNodeFromSchedule(schedule_deviceno, &activity_node, next_node);
+                                return_value = WriteNodeToSchedule(schedule_deviceno, &activity_node, next_node);
                                 if (return_value == RET_SUCCESSFUL)
                                 {
                                     // Check if new node is not the oldest node
                                     if (previous_node != UNEXISTING_NODE_INDEX)
                                     {
                                         // If there is a previous node, first  we get it
-                                        return_value = GetNodeFromSchedule(schedule_deviceno, &activity_node, previous_node);
+                                        return_value = ReadNodeFromSchedule(schedule_deviceno, &activity_node, previous_node);
                                         if (return_value == RET_SUCCESSFUL)
                                         {
                                             activity_node.next_node_index = new_node_index;
                                             // Then we update previous node
-                                            return_value = SetNodeFromSchedule(schedule_deviceno, &activity_node, previous_node);
+                                            return_value = WriteNodeToSchedule(schedule_deviceno, &activity_node, previous_node);
                                         }
                                     }
                                     else
@@ -361,7 +361,7 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                                     if (return_value == RET_SUCCESSFUL)
                                     {
                                         schedule_info.nb_activities++;
-                                        return_value = SetInfoFromSchedule(schedule_deviceno, &schedule_info);
+                                        return_value = WriteScheduleInfo(schedule_deviceno, &schedule_info);
                                     }
                                 }
                             }
@@ -384,17 +384,17 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                                 new_activity_node.next_node_index     = next_node;
 
                                 // Update node
-                                return_value = SetNodeFromSchedule(schedule_deviceno, &new_activity_node, new_node_index);
+                                return_value = WriteNodeToSchedule(schedule_deviceno, &new_activity_node, new_node_index);
                                 if (return_value == RET_SUCCESSFUL)
                                 {
                                     activity_node.next_node_index = new_node_index;
                                     // Update previous node (which is the node contained in activity_node)
-                                    return_value = SetNodeFromSchedule(schedule_deviceno, &activity_node, previous_node);
+                                    return_value = WriteNodeToSchedule(schedule_deviceno, &activity_node, previous_node);
                                     if (return_value == RET_SUCCESSFUL)
                                     {
                                         // Then update info
                                         schedule_info.nb_activities++;
-                                        return_value = SetInfoFromSchedule(schedule_deviceno, &schedule_info);
+                                        return_value = WriteScheduleInfo(schedule_deviceno, &schedule_info);
                                     }
                                 }
                             }
@@ -412,24 +412,24 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                                 new_activity_node.next_node_index     = next_node;
 
                                 // Update node
-                                return_value = SetNodeFromSchedule(schedule_deviceno, &new_activity_node, new_node_index);
+                                return_value = WriteNodeToSchedule(schedule_deviceno, &new_activity_node, new_node_index);
                                 if (return_value == RET_SUCCESSFUL)
                                 {
                                     activity_node.previous_node_index = new_node_index;
                                     // Update next node
-                                    return_value = SetNodeFromSchedule(schedule_deviceno, &activity_node, next_node);
+                                    return_value = WriteNodeToSchedule(schedule_deviceno, &activity_node, next_node);
                                     if (return_value == RET_SUCCESSFUL)
                                     {
                                         // Check if new node is not the oldest node
                                         if (previous_node != UNEXISTING_NODE_INDEX)
                                         {
                                             // If there is a previous node, first  we get it
-                                            return_value = GetNodeFromSchedule(schedule_deviceno, &activity_node, previous_node);
+                                            return_value = ReadNodeFromSchedule(schedule_deviceno, &activity_node, previous_node);
                                             if (return_value == RET_SUCCESSFUL)
                                             {
                                                 activity_node.next_node_index = new_node_index;
                                                 // Then we update previous node
-                                                return_value = SetNodeFromSchedule(schedule_deviceno, &activity_node, previous_node);
+                                                return_value = WriteNodeToSchedule(schedule_deviceno, &activity_node, previous_node);
                                             }
                                         }
                                         else
@@ -442,7 +442,7 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                                         if (return_value == RET_SUCCESSFUL)
                                         {
                                             schedule_info.nb_activities++;
-                                            return_value = SetInfoFromSchedule(schedule_deviceno, &schedule_info);
+                                            return_value = WriteScheduleInfo(schedule_deviceno, &schedule_info);
                                         }
                                     }
                                 }
@@ -467,14 +467,14 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
 }
 
 /**
- * @fn          ReleaseOldestActivity(deviceNo_t schedule_deviceno, pusActivity_t *activity)
+ * @fn          ReleaseNextActivity(deviceNo_t schedule_deviceno, pusActivity_t *activity)
  * @brief       This function releases the oldest activity and update the schedule
  * @param[in]   schedule_deviceno Schedule file number from which the oldest activity is release
  * @param[out]  activity Oldest activity released content
  * @retval      #RET_INVALID_PARAM if a pointer is NULL
  * @retval      #RET_SUCCESSFUL else
  */
-static returnCode_t ReleaseOldestActivity(deviceNo_t schedule_deviceno, pusActivity_t *activity)
+static returnCode_t ReleaseNextActivity(deviceNo_t schedule_deviceno, pusActivity_t *activity)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
@@ -483,13 +483,13 @@ static returnCode_t ReleaseOldestActivity(deviceNo_t schedule_deviceno, pusActiv
     {
         pusScheduleInfo_t schedule_info = { 0 };
         // First get schedule info
-        return_value = GetInfoFromSchedule(schedule_deviceno, &schedule_info);
+        return_value = ReadScheduleInfo(schedule_deviceno, &schedule_info);
         if (return_value == RET_SUCCESSFUL)
         {
             pusActivityNode_t activity_node         = { 0 };
             pusNodeIndex_t former_oldest_node_index = schedule_info.oldest_activity_index;
             // Get former oldest node (the one that will be released)
-            return_value = GetNodeFromSchedule(schedule_deviceno, &activity_node, former_oldest_node_index);
+            return_value = ReadNodeFromSchedule(schedule_deviceno, &activity_node, former_oldest_node_index);
             if (return_value == RET_SUCCESSFUL)
             {
                 // Get new oldest node
@@ -501,19 +501,19 @@ static returnCode_t ReleaseOldestActivity(deviceNo_t schedule_deviceno, pusActiv
 
                 // Then, we free the former oldest node
                 (void)memset(&activity_node, 0u, ACTIVITY_NODE_SIZE);
-                return_value = SetNodeFromSchedule(schedule_deviceno, &activity_node, former_oldest_node_index);
+                return_value = WriteNodeToSchedule(schedule_deviceno, &activity_node, former_oldest_node_index);
                 if (return_value == RET_SUCCESSFUL)
                 {
                     // Then, we update the new oldest node if it exists
                     if (new_oldest_node_index != UNEXISTING_NODE_INDEX)
                     {
                         // Get new oldest node
-                        return_value = GetNodeFromSchedule(schedule_deviceno, &activity_node, new_oldest_node_index);
+                        return_value = ReadNodeFromSchedule(schedule_deviceno, &activity_node, new_oldest_node_index);
                         if (return_value == RET_SUCCESSFUL)
                         {
                             activity_node.previous_node_index = UNEXISTING_NODE_INDEX;
                             // Update oldest node
-                            return_value = SetNodeFromSchedule(schedule_deviceno, &activity_node, new_oldest_node_index);
+                            return_value = WriteNodeToSchedule(schedule_deviceno, &activity_node, new_oldest_node_index);
                         }
                     }
 
@@ -522,7 +522,7 @@ static returnCode_t ReleaseOldestActivity(deviceNo_t schedule_deviceno, pusActiv
                     {
                         schedule_info.oldest_activity_index = new_oldest_node_index;
                         schedule_info.nb_activities--;
-                        return_value = SetInfoFromSchedule(schedule_deviceno, &schedule_info);
+                        return_value = WriteScheduleInfo(schedule_deviceno, &schedule_info);
                     }
                 }
             }
@@ -537,7 +537,7 @@ static returnCode_t ReleaseOldestActivity(deviceNo_t schedule_deviceno, pusActiv
 }
 
 /**
- * @fn          GetInfoFromSchedule(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info)
+ * @fn          ReadScheduleInfo(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info)
  * @brief       Get schedule info from schedule
  * @param[in]   schedule_deviceno Schedule file number
  * @param[out]  schedule_info Infos from schedule
@@ -545,7 +545,7 @@ static returnCode_t ReleaseOldestActivity(deviceNo_t schedule_deviceno, pusActiv
  * @retval      #RET_ERROR if write in FS has encountered an error
  * @retval      #RET_SUCCESSFUL else
  */
-static returnCode_t GetInfoFromSchedule(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info)
+static returnCode_t ReadScheduleInfo(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
@@ -570,7 +570,7 @@ static returnCode_t GetInfoFromSchedule(deviceNo_t schedule_deviceno, pusSchedul
 }
 
 /**
- * @fn          SetInfoFromSchedule(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info)
+ * @fn          WriteScheduleInfo(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info)
  * @brief       Set schedule info toward schedule
  * @param[in]   schedule_deviceno Schedule file number
  * @param[out]  schedule_info Infos for schedule
@@ -578,7 +578,7 @@ static returnCode_t GetInfoFromSchedule(deviceNo_t schedule_deviceno, pusSchedul
  * @retval      #RET_ERROR if write in FS has encountered an error
  * @retval      #RET_SUCCESSFUL else
  */
-static returnCode_t SetInfoFromSchedule(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info)
+static returnCode_t WriteScheduleInfo(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
@@ -603,7 +603,7 @@ static returnCode_t SetInfoFromSchedule(deviceNo_t schedule_deviceno, pusSchedul
 }
 
 /**
- * @fn          GetNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index)
+ * @fn          ReadNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index)
  * @brief       Get schedule node from schedule
  * @param[in]   schedule_deviceno Schedule file number
  * @param[out]  activity_node Node from schedule
@@ -612,7 +612,7 @@ static returnCode_t SetInfoFromSchedule(deviceNo_t schedule_deviceno, pusSchedul
  * @retval      #RET_ERROR if write in FS has encountered an error
  * @retval      #RET_SUCCESSFUL else
  */
-static returnCode_t GetNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index)
+static returnCode_t ReadNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
@@ -637,7 +637,7 @@ static returnCode_t GetNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivit
 }
 
 /**
- * @fn          SetNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index)
+ * @fn          WriteNodeToSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index)
  * @brief       Set schedule node toward schedule
  * @param[in]   schedule_deviceno Schedule file number
  * @param[out]  activity_node Node for schedule
@@ -646,7 +646,7 @@ static returnCode_t GetNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivit
  * @retval      #RET_ERROR if write in FS has encountered an error
  * @retval      #RET_SUCCESSFUL else
  */
-static returnCode_t SetNodeFromSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index)
+static returnCode_t WriteNodeToSchedule(deviceNo_t schedule_deviceno, pusActivityNode_t *activity_node, pusNodeIndex_t node_index)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
