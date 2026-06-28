@@ -43,8 +43,8 @@ typedef uint32_t pusNodeIndex_t;
  */
 typedef enum
 {
-    ACTIVITY_NODE_AVAILABLE   = 0u, /**< Node available */
-    ACTIVITY_NODE_UNAVAILABLE = 1u, /**< Node unavailable */
+    ACTIVITY_NODE_AVAILABLE = 0u, /**< Node available */
+    ACTIVITY_NODE_OCCUPIED  = 1u, /**< Node unavailable */
 } pusActivityNodeStatus_t;
 
 /**
