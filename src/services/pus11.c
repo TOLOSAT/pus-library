@@ -21,15 +21,16 @@
 
 /*************************** Functions Declarations **************************/
 
+static returnCode_t SetScheduleStatus(pus11Env_t *pus11_env, pus11Status_t new_status);
 static returnCode_t TryPopNextTC(pus11Env_t *pus11_env, pusTC_t *delayed_tc, time_t *next_tc_release_date);
+static returnCode_t AddSingleTC(pus11Env_t *pus11_env, uint8_t *tc_data, uint32_t offset, uint32_t data_size, pusExecutionError_t *error_code);
 static returnCode_t AllocateDataSlot(pus11Env_t *pus11_env, pus11DataIndex_t *data_index);
 static returnCode_t ResetScheduleAndData(pus11Env_t *pus11_env);
 static returnCode_t ReadTableInfo(pus11Env_t *pus11_env, pus11DataTableInfo_t *pus11_table_info);
 static returnCode_t WriteTableInfo(pus11Env_t *pus11_env, pus11DataTableInfo_t *pus11_table_info);
 static returnCode_t ReadDataFromTable(pus11Env_t *pus11_env, pus11Data_t *pus11_data, pus11DataIndex_t data_index);
 static returnCode_t WriteDataToTable(pus11Env_t *pus11_env, pus11Data_t *pus11_data, pus11DataIndex_t data_index);
-static returnCode_t SetScheduleStatus(pus11Env_t *pus11_env, pus11Status_t new_status);
-static returnCode_t AddSingleTC(pus11Env_t *pus11_env, uint8_t *tc_data, uint32_t offset, uint32_t data_size, pusExecutionError_t *error_code);
+
 /*************************** Variables Definitions ***************************/
 
 /*************************** Functions Definitions ***************************/
@@ -145,41 +146,6 @@ returnCode_t TryReleaseDelayedTC(pus11Env_t *pus11_env, time_t *next_tc_release_
                     }
                 }
             }
-        }
-        else
-        {
-            return_value = RET_INVALID_PARAM;
-        }
-    }
-    else
-    {
-        return_value = RET_INVALID_PARAM;
-    }
-
-    return return_value;
-}
-
-/**
- * @fn          SetScheduleStatus(pus11Env_t *pus11_env, pus11Status_t new_status)
- * @brief       Function that sets the PUS11 schedule status
- * @param[in,out]   pus11_env PUS11 environment
- * @param[in]       new_status New status to apply (PUS11_ENABLE or PUS11_DISABLE)
- * @retval          #RET_INVALID_PARAM if pus11_env is NULL
- * @retval          #RET_INVALID_PARAM if PUS11 is not initialized
- * @retval          #RET_SUCCESSFUL else
- */
-static returnCode_t SetScheduleStatus(pus11Env_t *pus11_env, pus11Status_t new_status)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-
-    // Check parameter(s)
-    if (pus11_env != NULL)
-    {
-        // Check if pus11 is initialized
-        if (pus11_env->status == PUS_INITIALIZED)
-        {
-            // Set PUS11 status
-            pus11_env->pus11_status = new_status;
         }
         else
         {
@@ -325,83 +291,6 @@ returnCode_t ExecuteS11SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
 }
 
 /**
- * @fn          AddSingleTC(pus11Env_t *pus11_env, uint8_t *tc_data, uint32_t offset,
- *                                uint32_t data_size, pusExecutionError_t *error_code)
- * @brief       Function that adds a single tc to the schedule if its timestamp lies in future
- * @param[in,out]   pus11_env PUS11 environment
- * @param[in]       tc_data Raw TC data buffer
- * @param[in]       offset Current offset in tc_data
- * @param[in]       data_size Total size of this activity (timestamp + TC)
- * @param[out]      error_code Indicates which error has been encountered
- * @retval          #RET_NOT_AVAILABLE if the timestamp is outdated
- * @retval          #RET_ERROR if schedule or data table encountered an error
- * @retval          #RET_SUCCESSFUL else
- */
-static returnCode_t AddSingleTC(pus11Env_t *pus11_env, uint8_t *tc_data, uint32_t offset, uint32_t data_size, pusExecutionError_t *error_code)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-
-    // Get Current time
-    time_t current_time = GetTime();
-
-    // Check if requested timestamp is in the future
-    time_t tc_timestamp = BIG_ENDIAN_ARRAY_TO_UINT64(&tc_data[offset]);
-
-    if (current_time <= tc_timestamp)
-    {
-        pus11DataTableInfo_t pus11_table_info = { 0 };
-        // Check if there is still data available
-        return_value = ReadTableInfo(pus11_env, &pus11_table_info);
-        if ((return_value == RET_SUCCESSFUL) && (pus11_table_info.nb_data < PUS11_MAXIMUM_DATA))
-        {
-            pus11DataIndex_t new_data_index = 0u;
-            // Get a data slot
-            return_value = AllocateDataSlot(pus11_env, &new_data_index);
-            if (return_value == RET_SUCCESSFUL)
-            {
-                // Put incomming data in data struct
-                pus11Data_t pus11_data = { 0 };
-                (void)memcpy((void *)&pus11_data.raw_data, &tc_data[offset + sizeof(time_t)], data_size - sizeof(time_t));
-                pus11_data.status = PUS11_DATA_UNAVAILABLE;
-                // Send data to file
-                return_value = WriteDataToTable(pus11_env, &pus11_data, new_data_index);
-                if (return_value == RET_SUCCESSFUL)
-                {
-                    // Create Activity based on TC data
-                    pusActivity_t activity = { 0 };
-                    activity.timestamp     = tc_timestamp;
-                    activity.data          = new_data_index;
-                    // Insert activity in schedule
-                    return_value = PushActivityInSchedule(pus11_env->dev_pus11_schedule, &activity);
-                    if (return_value != RET_SUCCESSFUL)
-                    {
-                        *error_code = PUS_EXECUTION_FAILED;
-                    }
-                }
-                else
-                {
-                    *error_code = PUS_EXECUTION_FAILED;
-                }
-            }
-            else
-            {
-                *error_code = PUS_EXECUTION_FAILED;
-            }
-        }
-        else
-        {
-            *error_code = PUS_EXECUTION_FAILED;
-        }
-    }
-    else
-    {
-        return_value = RET_NOT_AVAILABLE;
-        *error_code  = PUS_EXECUTION_UNEXPECTED_DATA;
-    }
-    return return_value;
-}
-
-/**
  * @fn              ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
  * @brief           Function that will add N activities to a time based schedule
  * @param[in,out]   env PUS11 environment
@@ -489,6 +378,41 @@ returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
 }
 
 /**
+ * @fn          SetScheduleStatus(pus11Env_t *pus11_env, pus11Status_t new_status)
+ * @brief       Function that sets the PUS11 schedule status
+ * @param[in,out]   pus11_env PUS11 environment
+ * @param[in]       new_status New status to apply (PUS11_ENABLE or PUS11_DISABLE)
+ * @retval          #RET_INVALID_PARAM if pus11_env is NULL
+ * @retval          #RET_INVALID_PARAM if PUS11 is not initialized
+ * @retval          #RET_SUCCESSFUL else
+ */
+static returnCode_t SetScheduleStatus(pus11Env_t *pus11_env, pus11Status_t new_status)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Check parameter(s)
+    if (pus11_env != NULL)
+    {
+        // Check if pus11 is initialized
+        if (pus11_env->status == PUS_INITIALIZED)
+        {
+            // Set PUS11 status
+            pus11_env->pus11_status = new_status;
+        }
+        else
+        {
+            return_value = RET_INVALID_PARAM;
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
  * @fn              TryPopNextTC(pus11Env_t *pus11_env, pusTC_t *delayed_tc, time_t *next_tc_release_date)
  * @brief           Get delayed TC if there is any available
  * @param[in,out]   pus11_env PUS11 environment
@@ -545,6 +469,83 @@ static returnCode_t TryPopNextTC(pus11Env_t *pus11_env, pusTC_t *delayed_tc, tim
         return_value = RET_INVALID_PARAM;
     }
 
+    return return_value;
+}
+
+/**
+ * @fn          AddSingleTC(pus11Env_t *pus11_env, uint8_t *tc_data, uint32_t offset,
+ *                                uint32_t data_size, pusExecutionError_t *error_code)
+ * @brief       Function that adds a single tc to the schedule if its timestamp lies in future
+ * @param[in,out]   pus11_env PUS11 environment
+ * @param[in]       tc_data Raw TC data buffer
+ * @param[in]       offset Current offset in tc_data
+ * @param[in]       data_size Total size of this activity (timestamp + TC)
+ * @param[out]      error_code Indicates which error has been encountered
+ * @retval          #RET_NOT_AVAILABLE if the timestamp is outdated
+ * @retval          #RET_ERROR if schedule or data table encountered an error
+ * @retval          #RET_SUCCESSFUL else
+ */
+static returnCode_t AddSingleTC(pus11Env_t *pus11_env, uint8_t *tc_data, uint32_t offset, uint32_t data_size, pusExecutionError_t *error_code)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Get Current time
+    time_t current_time = GetTime();
+
+    // Check if requested timestamp is in the future
+    time_t tc_timestamp = BIG_ENDIAN_ARRAY_TO_UINT64(&tc_data[offset]);
+
+    if (current_time <= tc_timestamp)
+    {
+        pus11DataTableInfo_t pus11_table_info = { 0 };
+        // Check if there is still data available
+        return_value = ReadTableInfo(pus11_env, &pus11_table_info);
+        if ((return_value == RET_SUCCESSFUL) && (pus11_table_info.nb_data < PUS11_MAXIMUM_DATA))
+        {
+            pus11DataIndex_t new_data_index = 0u;
+            // Get a data slot
+            return_value = AllocateDataSlot(pus11_env, &new_data_index);
+            if (return_value == RET_SUCCESSFUL)
+            {
+                // Put incomming data in data struct
+                pus11Data_t pus11_data = { 0 };
+                (void)memcpy((void *)&pus11_data.raw_data, &tc_data[offset + sizeof(time_t)], data_size - sizeof(time_t));
+                pus11_data.status = PUS11_DATA_UNAVAILABLE;
+                // Send data to file
+                return_value = WriteDataToTable(pus11_env, &pus11_data, new_data_index);
+                if (return_value == RET_SUCCESSFUL)
+                {
+                    // Create Activity based on TC data
+                    pusActivity_t activity = { 0 };
+                    activity.timestamp     = tc_timestamp;
+                    activity.data          = new_data_index;
+                    // Insert activity in schedule
+                    return_value = PushActivityInSchedule(pus11_env->dev_pus11_schedule, &activity);
+                    if (return_value != RET_SUCCESSFUL)
+                    {
+                        *error_code = PUS_EXECUTION_FAILED;
+                    }
+                }
+                else
+                {
+                    *error_code = PUS_EXECUTION_FAILED;
+                }
+            }
+            else
+            {
+                *error_code = PUS_EXECUTION_FAILED;
+            }
+        }
+        else
+        {
+            *error_code = PUS_EXECUTION_FAILED;
+        }
+    }
+    else
+    {
+        return_value = RET_NOT_AVAILABLE;
+        *error_code  = PUS_EXECUTION_UNEXPECTED_DATA;
+    }
     return return_value;
 }
 
