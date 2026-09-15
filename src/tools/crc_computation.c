@@ -19,11 +19,7 @@
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          computeCRC(const uint8_t *data, uint32_t length)
- * @brief       Function that compute CRC using CRC-16/CCITT-FALSE algorithm
- * @param[in]   data Data for which we wish to calculate the CRC
- * @param[in]   length Data size
- * @return      Computed CRC
+ * @copydoc computeCRC
  */
 uint16_t computeCRC(const uint8_t *data, uint32_t length)
 {

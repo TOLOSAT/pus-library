@@ -49,7 +49,33 @@ typedef uint32_t pus6Length_t;
 
 /*************************** Functions Declarations **************************/
 
+/**
+ * @fn              ExecuteS6SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that load data to memory
+ * @param[in,out]   env PUS6 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_INVALID_PARAM if cannot open the file (file does not exists)
+ * @retval          #RET_ERROR if writting in the file does not work
+ * @retval          #RET_SUCCESSFUL else
+ */
 extern returnCode_t ExecuteS6SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+
+/**
+ * @fn              ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that dump data from memory
+ * @param[in,out]   env PUS6 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_INVALID_PARAM if cannot open the file (file does not exists)
+ * @retval          #RET_ERROR if reading the file does not work
+ * @retval          #RET_ERROR if cannot build the TM
+ * @retval          #RET_SUCCESSFUL else
+ */
 extern returnCode_t ExecuteS6SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 #endif /* PUS6_H */

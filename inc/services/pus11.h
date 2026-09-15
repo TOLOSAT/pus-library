@@ -110,11 +110,76 @@ typedef struct
 
 /*************************** Functions Declarations **************************/
 
+/**
+ * @fn          InitS11(pus11Env_t *pus11_env)
+ * @brief       This function initialises a pus11 environment
+ * @param[in]   pus11_env PUS11 environment used for configuration
+ * @retval      #RET_SUCCESSFUL always
+ */
 extern returnCode_t InitS11(pus11Env_t *pus11_env);
+
+/**
+ * @fn          TryReleaseDelayedTC(pus11Env_t *pus11_env, time_t *next_tc_release_date)
+ * @brief       Function that tries to pop next tc from schedule into tc buffer if found to be on time
+ * @param[in]   pus11_env           PUS11 context used for configuration
+ * @param[out]  next_tc_release_date    Next TC release date
+ * @retval      #RET_NOT_AVAILABLE if no delayed TC is available
+ * @retval      #RET_ERROR if schedule encountered an error
+ * @retval      #RET_ERROR if device writting failed
+ * @retval      #RET_SUCCESSFUL else
+ */
 extern returnCode_t TryReleaseDelayedTC(pus11Env_t *pus11_env, time_t *next_tc_release_date);
+
+/**
+ * @fn              ExecuteS11SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will enable time based schedule
+ * @param[in,out]   env PUS11 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S11SS1 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_SUCCESSFUL else
+ */
 extern returnCode_t ExecuteS11SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+
+/**
+ * @fn              ExecuteS11SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will disable time based schedule
+ * @param[in,out]   env PUS11 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S11SS2 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_SUCCESSFUL else
+ */
 extern returnCode_t ExecuteS11SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+
+/**
+ * @fn              ExecuteS11SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will reset time-based schedule
+ * @param[in,out]   env PUS11 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S11SS3 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_NOT_AVAILABLE if cannot reset the schedule
+ * @retval          #RET_SUCCESSFUL else
+ */
 extern returnCode_t ExecuteS11SS3(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+
+/**
+ * @fn              ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will add N activities to a time based schedule
+ * @param[in,out]   env PUS11 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S11SS4 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_NOT_AVAILABLE if the PUS11 has been disabled
+ * @retval          #RET_NOT_AVAILABLE if the tc timestamp is outdated
+ * @retval          #RET_ERROR if an error has been encountered related to the schedule
+ * @retval          #RET_SUCCESSFUL else
+ */
 extern returnCode_t ExecuteS11SS4(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 #endif /* PUS11_H */

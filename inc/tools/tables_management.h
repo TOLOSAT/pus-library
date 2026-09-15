@@ -93,9 +93,46 @@ typedef struct
 
 /*************************** Functions Declarations **************************/
 
+/**
+ * @fn          InitRoutingTable(pusRoutingTable_t *routing_table)
+ * @brief       Check if the table is ordered from smallest to largest key
+ * @param[in]   routing_table routing table we want to check
+ * @retval      #RET_ERROR if the table is not ordered from smallest to largest key or cannot open device
+ * @retval      #RET_INVALID_PARAM if table size is 0 or if table is null pointer
+ * @retval      #RET_SUCCESSFUL else
+ */
 extern returnCode_t InitRoutingTable(pusRoutingTable_t *routing_table);
+
+/**
+ * @fn          InitExecutionTable(pusExecutionTable_t *execution_table)
+ * @brief       Check if the table is ordered from smallest to largest key
+ * @param[in]   execution_table Execution table we want to check
+ * @retval      #RET_ERROR if the table is not ordered from smallest to largest key
+ * @retval      #RET_INVALID_PARAM if table size is 0 or if table is null pointer
+ * @retval      #RET_SUCCESSFUL else
+ */
 extern returnCode_t InitExecutionTable(pusExecutionTable_t *execution_table);
+
+/**
+ * @fn          RouteSearch(uint32_t key, pusRoutingTable_t *routing_table, pusRoutingTableEntry_t **entry)
+ * @brief       This function search for route in routing table with a key
+ * @param[in]   key Key that help us to find the route.
+ * @param[in]   routing_table Routing table where we search the route
+ * @param[out]  entry Entry we are looking for
+ * @retval      #RET_NOT_AVAILABLE if key does not exist in routing table
+ * @retval      #RET_SUCCESSFUL else
+ */
 extern returnCode_t RouteSearch(uint32_t key, pusRoutingTable_t *routing_table, pusRoutingTableEntry_t **entry);
+
+/**
+ * @fn          ExecutionSearch(uint32_t key, pusExecutionTable_t *execution_table, pusExecutionTableEntry_t **entry)
+ * @brief       This function search for execution function in execution table with a key
+ * @param[in]   key Key that help us to find the route.
+ * @param[in]   execution_table Execution table where we search the function to execute
+ * @param[out]  entry Entry we are looking for
+ * @retval      #RET_NOT_AVAILABLE if key does not exist in routing table
+ * @retval      #RET_SUCCESSFUL else
+ */
 extern returnCode_t ExecutionSearch(uint32_t key, pusExecutionTable_t *execution_table, pusExecutionTableEntry_t **entry);
 
 #endif /* TABLES_MANAGEMENT_H */

@@ -34,12 +34,7 @@ static returnCode_t BuildS160SS38(pusTM_t *tm, taskUsage_t *tasks_info, uint32_t
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          InitS160(pus160Env_t *pus160_env)
- * @brief       Function that initialises PUS 160
- * @param[in]   pus160_env PUS160 environment used for configuration
- * @retval      #RET_INVALID_PARAM if nb_task is not correct
- * @retval      #RET_ERROR if cannot bind the pus160_dev_reboot to the reboot
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc InitS160
  */
 returnCode_t InitS160(pus160Env_t *pus160_env)
 {
@@ -87,12 +82,7 @@ returnCode_t InitS160(pus160Env_t *pus160_env)
 }
 
 /**
- * @fn              ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that achieve a reboot to a chosen software
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for the sent TM
+ * @copydoc ExecuteS160SS1
  */
 returnCode_t ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -154,12 +144,7 @@ returnCode_t ExecuteS160SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
 }
 
 /**
- * @fn              ExecuteS160SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that selects the default rebooting software (soft_id, safe/nominal)
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for the sent TM
+ * @copydoc ExecuteS160SS2
  */
 returnCode_t ExecuteS160SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -236,12 +221,7 @@ returnCode_t ExecuteS160SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
 }
 
 /**
- * @fn              ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that requests the system context
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S160SS18 TM
+ * @copydoc ExecuteS160SS17
  */
 returnCode_t ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -291,12 +271,7 @@ returnCode_t ExecuteS160SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 }
 
 /**
- * @fn              ExecuteS160SS19(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that requests the reduced system context (without debug info)
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S160SS20 TM
+ * @copydoc ExecuteS160SS19
  */
 returnCode_t ExecuteS160SS19(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -346,12 +321,7 @@ returnCode_t ExecuteS160SS19(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 }
 
 /**
- * @fn              ExecuteS160SS21(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that requests the error context (only debug info)
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S160SS22 TM
+ * @copydoc ExecuteS160SS21
  */
 returnCode_t ExecuteS160SS21(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -400,12 +370,7 @@ returnCode_t ExecuteS160SS21(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 }
 
 /**
- * @fn              ExecuteS160SS23(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that resets the error context
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for the sent TM
+ * @copydoc ExecuteS160SS23
  */
 returnCode_t ExecuteS160SS23(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -445,12 +410,7 @@ returnCode_t ExecuteS160SS23(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 }
 
 /**
- * @fn              ExecuteS160SS33(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that send S160SS34 TM (idle time report) when requested by a S160SS33
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S160SS34 TM
+ * @copydoc ExecuteS160SS33
  */
 returnCode_t ExecuteS160SS33(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -504,12 +464,7 @@ returnCode_t ExecuteS160SS33(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 }
 
 /**
- * @fn              ExecuteS160SS35(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that send S160SS36 TM (stack usage report) when requested by a S160SS35
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S160SS36 TM
+ * @copydoc ExecuteS160SS35
  */
 returnCode_t ExecuteS160SS35(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -563,12 +518,7 @@ returnCode_t ExecuteS160SS35(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionEr
 }
 
 /**
- * @fn              ExecuteS160SS37(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that send S160SS38 TM (system usage report) when requested by a S160SS37
- * @param[in,out]   env PUS160 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S160SS38 TM
+ * @copydoc ExecuteS160SS37
  */
 returnCode_t ExecuteS160SS37(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {

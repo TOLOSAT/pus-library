@@ -23,12 +23,7 @@
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          InitTMSendContext(pusSendContext_t *send_context)
- * @brief       Function that initialise the send context for TM sending
- * @param[in]   send_context Execution context for the task dealing with TM sending
- * @retval      #RET_INVALID_PARAM if a pointer is a null pointer or send table size is null
- * @retval      #RET_ERROR if initialisation failed because of device binding
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc InitTMSendContext
  */
 returnCode_t InitTMSendContext(pusSendContext_t *send_context)
 {
@@ -68,13 +63,7 @@ returnCode_t InitTMSendContext(pusSendContext_t *send_context)
 }
 
 /**
- * @fn          SendTM(pusSendContext_t *send_context)
- * @brief       Function that send reads incoming TM from the entry buffers and send them
- * @param[in]   send_context Send context for the task dealing with TM sending
- * @retval      #RET_INVALID_PARAM if send_context is not initialised
- * @retval      #RET_ERROR if cannot read entry buffers
- * @retval      #RET_ERROR if cannot send TM in the TX device
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc SendTM
  */
 returnCode_t SendTM(pusSendContext_t *send_context)
 {
@@ -122,16 +111,7 @@ returnCode_t SendTM(pusSendContext_t *send_context)
 }
 
 /**
- * @fn          BuildTM(pusTM_t *tm, pusService_t service, pusSubService_t subservice, pusData_t *data, uint16_t data_size)
- * @brief       Function that build a TM.
- * @param[out]  tm Pointer to the TM we want to create
- * @param[in]   service PUS Service of TM.
- * @param[in]   subservice PUS Subservice of TM.
- * @param[in]   data Data Packet.
- * @param[in]   data_size Size of data packet.
- * @retval      #RET_INVALID_PARAM if tm is null pointer or service or subservice equal to 0
- * @retval      #RET_ERROR if cannot fill time field
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc BuildTM
  */
 returnCode_t BuildTM(pusTM_t *tm, pusService_t service, pusSubService_t subservice, pusData_t *data, uint16_t data_size)
 {
@@ -184,16 +164,7 @@ returnCode_t BuildTM(pusTM_t *tm, pusService_t service, pusSubService_t subservi
 }
 
 /**
- * @fn              FormatTM(pusTM_t *tm)
- * @brief           Function that format tm the right way
- * @param[in,out]   tm Pointer to the TM we want to format
- * @retval          #RET_INVALID_PARAM if tm is null pointer
- * @retval          #RET_SUCCESSFUL else
- *
- * As we work we little endian processors, but the TM and TM are big endian
- * formated, we need to swap to big endian before send the TM.
- *
- * @warning This function wont format TM data field, it has to be format before.
+ * @copydoc FormatTM
  */
 returnCode_t FormatTM(pusTM_t *tm)
 {
@@ -227,10 +198,7 @@ returnCode_t FormatTM(pusTM_t *tm)
 }
 
 /**
- * @fn              EraseTM(pusTM_t *tm)
- * @brief           Function that erase a TM, it fills it with zeros
- * @param[in,out]   tm Pointer to the TM we want to erase
- * @return          Nothing
+ * @copydoc EraseTM
  */
 void EraseTM(pusTM_t *tm)
 {

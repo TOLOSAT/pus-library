@@ -39,14 +39,7 @@ static returnCode_t CheckTCPacketIdValidity(sppPacketId_t tc_packet_id, pusAccep
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceError_t *error)
- * @brief       Function that parse the RX buffer to extract TCs
- * @param[in]   ctx Parsing context containing the RX buffer
- * @param[out]  tc Pointer to the TC frame structure to fill
- * @param[out]  error Pointer to store the TC acceptance error code
- * @retval      #RET_INVALID_PARAM if a pointer is null
- * @retval      #RET_ERROR if parsing failed
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc ParseBuffer
  */
 returnCode_t ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceError_t *error)
 {
@@ -108,12 +101,7 @@ returnCode_t ParseBuffer(pusParsingContext_t *ctx, pusTC_t *tc, pusAcceptanceErr
 }
 
 /**
- * @fn          CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
- * @brief       Function that verifies if TC is valid (right version, type, size)
- * @param[in]   tc TC to check validity
- * @param[out]  error Pointer to pass error type to TM(1,2)
- * @retval      #RET_INVALID_PARAM if the TC is not well formated or CRC is invalid
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc CheckTCValidity
  */
 returnCode_t CheckTCValidity(pusTC_t *tc, pusAcceptanceError_t *error)
 {
@@ -386,4 +374,3 @@ static returnCode_t ParseOneTC(pusParsingContext_t *ctx, pusTC_t *tc, tcState_t 
 
     return return_value;
 }
-

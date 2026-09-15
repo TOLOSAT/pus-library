@@ -25,15 +25,7 @@ static returnCode_t GetLinenoFromHKID(pus3HKTable_t *table, pus3HKID_t hkid, len
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn              InitS3(pus3Env_t *pus3_env)
- * @brief           This function initializes a PUS3 environment
- * @param[in,out]   pus3_env PUS3 environment
- * @retval          #RET_INVALID_PARAM if pus3_env is a null pointer
- * @retval          #RET_INVALID_PARAM if hk_table is empty or size is zero
- * @retval          #RET_INVALID_PARAM if a pus3 entry is invalid (null size, null pointer or null collection rate)
- * @retval          #RET_INVALID_PARAM if hk_table entries are not ordered by hkid
- * @retval          #RET_ERROR if DeviceOpen encountered an error
- * @retval          #RET_SUCCESSFUL else
+ * @copydoc InitS3
  */
 returnCode_t InitS3(pus3Env_t *pus3_env)
 {
@@ -95,12 +87,7 @@ returnCode_t InitS3(pus3Env_t *pus3_env)
 }
 
 /**
- * @fn          EmitHKs(pus3Env_t *pus3_env)
- * @brief       Function that is call every period to emit housekeeping TMs
- * @param[in]   pus3_env pus3_env PUS3 environment
- * @retval      #RET_INVALID_PARAM if pus3_env is null or not initialized
- * @retval      #RET_ERROR if Building or sending the TM encounters an error
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc EmitHKs
  */
 returnCode_t EmitHKs(pus3Env_t *pus3_env)
 {
@@ -152,15 +139,7 @@ returnCode_t EmitHKs(pus3Env_t *pus3_env)
 }
 
 /**
- * @fn              ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that send enable HK report by HKID (if HKID = 0 enable all)
- * @param[in,out]   env PUS3 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
- * @retval          #RET_INVALID_PARAM if a pointer is NULL
- * @retval          #RET_INVALID_PARAM if HKID does not exist
- * @retval          #RET_SUCCESSFUL else
+ * @copydoc ExecuteS3SS5
  */
 returnCode_t ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -254,15 +233,7 @@ returnCode_t ExecuteS3SS5(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
 }
 
 /**
- * @fn              ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that send disable HK report by HKID (if HKID = 0 disable all)
- * @param[in,out]   env PUS3 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
- * @retval          #RET_INVALID_PARAM if a pointer is NULL
- * @retval          #RET_NOT_AVAILABLE if HKID does not exist
- * @retval          #RET_SUCCESSFUL else
+ * @copydoc ExecuteS3SS6
  */
 returnCode_t ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -356,15 +327,7 @@ returnCode_t ExecuteS3SS6(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
 }
 
 /**
- * @fn              ExecuteS3SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that dumps HK report parameters
- * @param[in,out]   env PUS3 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
- * @retval          #RET_INVALID_PARAM if a pointer is NULL
- * @retval          #RET_NOT_AVAILABLE if HKID does not exist
- * @retval          #RET_SUCCESSFUL else
+ * @copydoc ExecuteS3SS9
  */
 returnCode_t ExecuteS3SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {
@@ -465,15 +428,7 @@ returnCode_t ExecuteS3SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError
 }
 
 /**
- * @fn              ExecuteS3SS31(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that change an HK collection rate
- * @param[in,out]   env PUS3 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
- * @retval          #RET_INVALID_PARAM if a pointer is NULL
- * @retval          #RET_NOT_AVAILABLE if HKID does not exist
- * @retval          #RET_SUCCESSFUL else
+ * @copydoc ExecuteS3SS31
  */
 returnCode_t ExecuteS3SS31(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
 {

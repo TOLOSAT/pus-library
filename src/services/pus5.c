@@ -21,14 +21,7 @@
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          BuildS5SS1234(pusTM_t *tm, severityLevel_t severity, eventReport_t *report)
- * @brief       Function that send S5SS1, S5SS2, S5SS3 or S5SS4 TM (event report)
- * @param[out]  tm TM that will be sent
- * @param[in]   severity Severity of the event
- * @param[in]   report Event report
- * @retval      #RET_INVALID_PARAM if a pointer is NULL or severity is not 1,2,3 or 4
- * @retval      #RET_ERROR if cannot build TM
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc BuildS5SS1234
  */
 returnCode_t BuildS5SS1234(pusTM_t *tm, severityLevel_t severity, eventReport_t *report)
 {

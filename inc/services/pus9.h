@@ -31,6 +31,17 @@
 
 /*************************** Functions Declarations **************************/
 
+/**
+ * @fn              ExecuteS9SS128(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that receive S9SS128 TC and update OBT
+ * @param[in,out]   env PUS9 environment
+ * @param[in]       tc S9SS128 TC that contains upcoming time
+ * @param[out]      tm None (this parameter is unused for these service and subservice)
+ * @param[out]      error_code Indicates which error has been encountered for S1SS8 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_ERROR if time cannot be set
+ * @retval          #RET_SUCCESSFUL else
+ */
 extern returnCode_t ExecuteS9SS128(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 #endif /* PUS9_H */

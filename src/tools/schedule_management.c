@@ -34,14 +34,7 @@ static returnCode_t WriteNodeToSchedule(deviceNo_t schedule_deviceno, pusActivit
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          PushActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *activity)
- * @brief       Push an activity into the schedule
- * @param[in]   schedule_deviceno Schedule file number that will receive the activity
- * @param[in]   activity Activity to push
- * @retval      #RET_INVALID_PARAM if a pointer is null
- * @retval      #RET_NOT_AVAILABLE if there is no more place available in the schedule
- * @retval      #RET_ERROR if an error has been encountered
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc PushActivityInSchedule
  */
 returnCode_t PushActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *activity)
 {
@@ -81,16 +74,7 @@ returnCode_t PushActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t 
 }
 
 /**
- * @fn          PopActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *activity, time_t *next_activity_date)
- * @brief       Pop an activity from the schedule
- * @param[in]   schedule_deviceno   Schedule file number from where the activity will be removed
- * @param[out]  activity            Activity removed
- * @param[out]  next_activity_date  Next activity release date
- * @retval      #RET_INVALID_PARAM if a pointer is null
- * @retval      #RET_NOT_AVAILABLE if there is no more activity in the schedule
- * @retval      #RET_NOT_AVAILABLE if there is no activity that can be released
- * @retval      #RET_ERROR if an error has been encountered
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc PopActivityInSchedule
  */
 returnCode_t PopActivityInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *activity, time_t *next_activity_date)
 {

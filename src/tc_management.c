@@ -34,15 +34,7 @@ static returnCode_t SendExecNackTM(const pusTC_t *tc, pusTM_t *execution_tm, dev
 /*************************** Functions Definitions ***************************/
 
 /**
- * @fn          InitTCReceiveContext(pusReceiveContext_t *receive_context)
- * @brief       Function that initialise the receive context for TC handling
- * @param[in]   receive_context Execution context for the task dealing with TC execution
- * @retval      #RET_INVALID_PARAM if a pointer is a null pointer
- * @retval      #RET_INVALID_PARAM if routing table size is zero
- * @retval      #RET_INVALID_PARAM if PUS receive buffer size is smaller than TC max size
- * @retval      #RET_INVALID_PARAM if buffer size is zero when rx_type is DEVICE_TYPE_PERIPHERAL
- * @retval      #RET_ERROR if initialisation failed because of device binding or execution table initialisation
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc InitTCReceiveContext
  */
 returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context)
 {
@@ -99,15 +91,7 @@ returnCode_t InitTCReceiveContext(pusReceiveContext_t *receive_context)
 }
 
 /**
- * @fn          ReceiveTC(pusReceiveContext_t *receive_context)
- * @brief       Function that get a TC and and routes it toward it's corresponding task
- * @param[in]   receive_context Execution context for the task dealing with TC execution
- * @retval      #RET_INVALID_PARAM if receive_context is not initialised
- * @retval      #RET_NOT_AVAILABLE if there is no TC available
- * @retval      #RET_ERROR if receiving the TC is not working
- * @retval      #RET_ERROR if cannot format TC
- * @retval      #RET_ERROR if cannot write TC into it's device
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc ReceiveTC
  */
 returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
 {
@@ -193,12 +177,7 @@ returnCode_t ReceiveTC(pusReceiveContext_t *receive_context)
 }
 
 /**
- * @fn          InitTCExecutionContext(pusExecutionContext_t *execution_context)
- * @brief       Function that initialise the execution context for TC handling
- * @param[in]   execution_context Execution context for the task dealing with TC execution
- * @retval      #RET_INVALID_PARAM if a pointer is a null pointer or routing table size is null
- * @retval      #RET_ERROR if initialisation failed because of device binding or execution table initialisation
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc InitTCExecutionContext
  */
 returnCode_t InitTCExecutionContext(pusExecutionContext_t *execution_context)
 {
@@ -255,12 +234,7 @@ returnCode_t InitTCExecutionContext(pusExecutionContext_t *execution_context)
 }
 
 /**
- * @fn          ExecuteTC(pusExecutionContext_t *execution_context)
- * @brief       This function executes incoming TC.
- * @param[in]   execution_context Execution context for the task dealing with TC execution
- * @retval      #RET_INVALID_PARAM if execution_context is empty or contains an empty field
- * @retval      #RET_ERROR if cannot recognize TC or has an error with device management
- * @retval      #RET_SUCCESSFUL else
+ * @copydoc ExecuteTC
  */
 returnCode_t ExecuteTC(pusExecutionContext_t *execution_context)
 {
