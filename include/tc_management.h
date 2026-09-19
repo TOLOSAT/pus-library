@@ -22,7 +22,7 @@
 /******************************* Include Files *******************************/
 
 #include "pus_types.h"
-#include "tools/tables_management.h"
+#include "utils/tables_management.h"
 
 /***************************** Macros Definitions ****************************/
 

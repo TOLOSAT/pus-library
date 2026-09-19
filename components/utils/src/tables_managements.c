@@ -9,7 +9,7 @@
 /******************************* Include Files *******************************/
 
 #include "kernel.h"
-#include "tools/tables_management.h"
+#include "utils/tables_management.h"
 
 /***************************** Macros Definitions ****************************/
 

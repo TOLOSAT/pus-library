@@ -11,7 +11,7 @@
 #include <string.h>
 
 #include "kernel.h"
-#include "tools/schedule_management.h"
+#include "utils/schedule_management.h"
 
 /***************************** Macros Definitions ****************************/
 
