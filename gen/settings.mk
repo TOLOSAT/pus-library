@@ -7,7 +7,12 @@ SETTINGS_MK := yes
 ################## DEFAULTS ##################
 ##############################################
 
-KERNEL_HEADERS	?= $(error KERNEL_HEADERS is required)
+KERNEL_HEADERS_OPTIONAL_GOALS = clean help print-%
+ifeq ($(strip $(MAKECMDGOALS)),)
+KERNEL_HEADERS ?= $(error KERNEL_HEADERS is required)
+else ifneq ($(strip $(filter-out $(KERNEL_HEADERS_OPTIONAL_GOALS),$(MAKECMDGOALS))),)
+KERNEL_HEADERS ?= $(error KERNEL_HEADERS is required)
+endif
 
 ifndef TOOLCHAIN
 $(warning TOOLCHAIN not set — using default 'arm-none-eabi')
@@ -63,7 +68,7 @@ endif
 # Checks if the right compiler is used
 CC_TARGETED_VERSION = 10.3.1
 CC_VERSION = $(shell $(CC) -dumpversion)
-COMPILER_WARNING_EXECEPTIONS = help clean verif doc format
+COMPILER_WARNING_EXECEPTIONS = help clean verif doc format print-%
 ifneq ($(findstring n, $(MAKEFLAGS)), n)
 ifeq ($(filter $(COMPILER_WARNING_EXECEPTIONS),$(MAKECMDGOALS)),)
 ifneq ($(CC_VERSION), $(CC_TARGETED_VERSION))

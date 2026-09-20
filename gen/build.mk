@@ -34,7 +34,7 @@ CHECKER_INCFLAGS = $(INCFLAGS) $(addprefix -I,$(PRIVATE_INCDIRS))
 ################ BUILD RECIPES ###############
 ##############################################
 
-.PHONY : build start end clean build-state-force
+.PHONY : build start end build-clean build-state-force
 build: end
 end: $(LIB)
 $(OBJS): | start
@@ -102,7 +102,7 @@ end :
 	$(if $(PARALLEL_BUILD),$(QUIET_RECIPE),$(LIBRARY_END_VERBOSE))
 
 # Clean recipe
-clean :
+build-clean :
 	@printf "$(BLUE)Cleaning $(LIB_NAME) build directory...$(RESET)"
 	@rm -rf $(OBJDIR)
 	@rm -rf $(LIB)
