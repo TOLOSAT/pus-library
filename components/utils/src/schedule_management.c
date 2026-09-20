@@ -21,7 +21,7 @@ static returnCode_t GetAvailableNode(deviceNo_t schedule_deviceno, pusNodeIndex_
 static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivity_t *activity, pusNodeIndex_t new_node_index);
 static returnCode_t ReleaseNextActivity(deviceNo_t schedule_deviceno, pusActivity_t *activity);
 static returnCode_t InsertNodeInBetween(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info, pusActivity_t *activity,
-                                       pusNodeIndex_t new_node_index, pusNodeIndex_t previous_node_index, pusNodeIndex_t next_node_index);
+                                        pusNodeIndex_t new_node_index, pusNodeIndex_t previous_node_index, pusNodeIndex_t next_node_index);
 static returnCode_t BuildAndWriteNewNode(deviceNo_t schedule_deviceno, pusNodeIndex_t new_node_index, pusActivity_t *activity,
                                          pusNodeIndex_t previous_node_index, pusNodeIndex_t next_node_index);
 static returnCode_t ReadScheduleInfo(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info);
@@ -267,8 +267,7 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
             if (schedule_info.nb_activities == 0u)
             {
                 // Empty schedule, write the new node with no neighbours
-                return_value = BuildAndWriteNewNode(schedule_deviceno, new_node_index, activity,
-                                                    UNEXISTING_NODE_INDEX, UNEXISTING_NODE_INDEX);
+                return_value = BuildAndWriteNewNode(schedule_deviceno, new_node_index, activity, UNEXISTING_NODE_INDEX, UNEXISTING_NODE_INDEX);
                 if (return_value == RET_SUCCESSFUL)
                 {
                     schedule_info.nb_activities++;
@@ -308,8 +307,7 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                         pusNodeIndex_t previous_node_index = UNEXISTING_NODE_INDEX;
 
                         // Either we reeached the end of the list, or it sits just before activity_node
-                        if ((activity_node.next_node_index == UNEXISTING_NODE_INDEX)
-                            && (activity_node.activity.timestamp <= activity->timestamp))
+                        if ((activity_node.next_node_index == UNEXISTING_NODE_INDEX) && (activity_node.activity.timestamp <= activity->timestamp))
                         {
                             // New node becomes the next_node_index
                             previous_node_index = next_node_index;
@@ -322,8 +320,8 @@ static returnCode_t InsertNodeInSchedule(deviceNo_t schedule_deviceno, pusActivi
                         }
 
                         // Insert the new node between its computed neighbours
-                        return_value = InsertNodeInBetween(schedule_deviceno, &schedule_info, activity,
-                                                          new_node_index, previous_node_index, next_node_index);
+                        return_value =
+                            InsertNodeInBetween(schedule_deviceno, &schedule_info, activity, new_node_index, previous_node_index, next_node_index);
                     }
                     else
                     {
@@ -426,12 +424,8 @@ static returnCode_t ReleaseNextActivity(deviceNo_t schedule_deviceno, pusActivit
  * @retval      #RET_ERROR if a write in FS has encountered an error
  * @retval      #RET_SUCCESSFUL else
  */
-static returnCode_t InsertNodeInBetween(deviceNo_t schedule_deviceno,
-                                       pusScheduleInfo_t *schedule_info,
-                                       pusActivity_t *activity,
-                                       pusNodeIndex_t new_node_index,
-                                       pusNodeIndex_t previous_node_index,
-                                       pusNodeIndex_t next_node_index)
+static returnCode_t InsertNodeInBetween(deviceNo_t schedule_deviceno, pusScheduleInfo_t *schedule_info, pusActivity_t *activity,
+                                        pusNodeIndex_t new_node_index, pusNodeIndex_t previous_node_index, pusNodeIndex_t next_node_index)
 {
     returnCode_t return_value = RET_SUCCESSFUL;
 
@@ -439,8 +433,7 @@ static returnCode_t InsertNodeInBetween(deviceNo_t schedule_deviceno,
     if ((schedule_info != NULL) && (activity != NULL))
     {
         // Write the new node with its neighbours nodes
-        return_value = BuildAndWriteNewNode(schedule_deviceno, new_node_index, activity,
-                                            previous_node_index, next_node_index);
+        return_value = BuildAndWriteNewNode(schedule_deviceno, new_node_index, activity, previous_node_index, next_node_index);
         if (return_value == RET_SUCCESSFUL)
         {
             pusActivityNode_t activity_node = { 0 };
@@ -452,7 +445,7 @@ static returnCode_t InsertNodeInBetween(deviceNo_t schedule_deviceno,
                 if (return_value == RET_SUCCESSFUL)
                 {
                     activity_node.previous_node_index = new_node_index;
-                    return_value = WriteNodeToSchedule(schedule_deviceno, &activity_node, next_node_index);
+                    return_value                      = WriteNodeToSchedule(schedule_deviceno, &activity_node, next_node_index);
                 }
             }
 

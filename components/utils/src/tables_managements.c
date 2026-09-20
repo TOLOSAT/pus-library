@@ -104,7 +104,7 @@ returnCode_t RouteSearch(uint32_t key, pusRoutingTable_t *routing_table, pusRout
     {
         if (routing_table->entries[cursor].key == key)
         {
-            *entry = &routing_table->entries[cursor];
+            *entry       = &routing_table->entries[cursor];
             return_value = RET_SUCCESSFUL;
         }
         else if (routing_table->entries[cursor].key < key)
@@ -137,8 +137,8 @@ returnCode_t ExecutionSearch(uint32_t key, pusExecutionTable_t *execution_table,
     {
         if (execution_table->entries[cursor].key == key)
         {
-            *entry = &execution_table->entries[cursor];
-            return_value            = RET_SUCCESSFUL;
+            *entry       = &execution_table->entries[cursor];
+            return_value = RET_SUCCESSFUL;
         }
         else if (execution_table->entries[cursor].key < key)
         {
