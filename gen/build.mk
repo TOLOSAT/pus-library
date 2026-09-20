@@ -14,11 +14,12 @@ OBJDIR = $(BUILD_DIR)/middlewares/$(LIB_NAME)
 
 # Files
 COMPONENTS = $(notdir $(wildcard $(COMPONENTS_DIR)/*))
-SRCS = $(foreach component,$(COMPONENTS),$(wildcard $(COMPONENTS_DIR)/$(component)/src/*.c))
-OBJS = $(foreach component,$(COMPONENTS), \
-	   $(patsubst $(COMPONENTS_DIR)/$(component)/src/%.c,$(OBJDIR)/components/$(component)/%.o, \
-	   $(filter $(COMPONENTS_DIR)/$(component)/src/%.c,$(SRCS))))
-LIB  = $(OUTPUT_DIR)/lib$(LIB_NAME).a
+SRCS       = $(foreach component,$(COMPONENTS),$(wildcard $(COMPONENTS_DIR)/$(component)/src/*.c))
+OBJS       = $(foreach component,$(COMPONENTS), \
+	         $(patsubst $(COMPONENTS_DIR)/$(component)/src/%.c,$(OBJDIR)/components/$(component)/%.o, \
+	         $(filter $(COMPONENTS_DIR)/$(component)/src/%.c,$(SRCS))))
+LIB        = $(OUTPUT_DIR)/lib$(LIB_NAME).a
+FLAGS_FILE = $(BUILD_STATE_DIR)/$(LIB_NAME).flags
 
 ##############################################
 #################### FLAGS ###################
@@ -33,10 +34,25 @@ CHECKER_INCFLAGS = $(INCFLAGS) $(addprefix -I,$(PRIVATE_INCDIRS))
 ################ BUILD RECIPES ###############
 ##############################################
 
-.PHONY : build start end clean
+.PHONY : build start end clean build-state-force
 build: end
 end: $(LIB)
 $(OBJS): | start
+build-state-force :
+
+$(FLAGS_FILE) : build-state-force
+	@mkdir -p $(@D)
+	@state_tmp="$@.tmp.$$$$"; \
+	{ \
+		printf '%s\n' 'compiler=$(CC)'; \
+		printf '%s\n' 'compiler_version=$(CC_VERSION)'; \
+		printf '%s\n' 'archiver=$(AR)'; \
+		printf '%s\n' 'cflags=$(CFLAGS)'; \
+		printf '%s\n' 'include_dirs=$(INCDIRS)'; \
+		printf '%s\n' 'private_include_dirs=$(PRIVATE_INCDIRS)'; \
+		printf '%s\n' 'sources=$(SRCS)'; \
+	} > "$$state_tmp"; \
+	if cmp -s "$$state_tmp" "$@"; then rm -f "$$state_tmp"; else mv -f "$$state_tmp" "$@"; fi
 
 define LIBRARY_START_VERBOSE
 	@echo "$(BOLD)=============================$(RESET)"
@@ -66,7 +82,7 @@ start :
 
 # Building recipes
 define COMPONENT_BUILD_RULE
-$(OBJDIR)/components/$(1)/%.o : $(COMPONENTS_DIR)/$(1)/src/%.c
+$(OBJDIR)/components/$(1)/%.o : $(COMPONENTS_DIR)/$(1)/src/%.c $(FLAGS_FILE)
 	@echo "  CC  [$(LIB_NAME)/$(1)] $$(@F)"
 	@mkdir -p $$(@D)
 	@$(CC) $(CFLAGS) $(INCFLAGS) $(if $(wildcard $(COMPONENTS_DIR)/$(1)/inc),-iquote $(COMPONENTS_DIR)/$(1)/inc) $$< -o $$@
@@ -75,10 +91,11 @@ endef
 $(foreach component,$(COMPONENTS),$(eval $(call COMPONENT_BUILD_RULE,$(component))))
 
 # Library generation
-$(LIB) : $(OBJS)
+$(LIB) : $(OBJS) $(FLAGS_FILE)
 	@echo "  AR  [$(LIB_NAME)] $(@F)"
 	@mkdir -p $(@D)
-	@$(AR) rcs $@ $^
+	@rm -f $@
+	@$(AR) rcs $@ $(OBJS)
 
 # Build footer
 end :
@@ -89,6 +106,7 @@ clean :
 	@printf "$(BLUE)Cleaning $(LIB_NAME) build directory...$(RESET)"
 	@rm -rf $(OBJDIR)
 	@rm -rf $(LIB)
+	@rm -f $(FLAGS_FILE)
 	@echo "$(BOLD)$(GREEN)Done.$(RESET)"
 
 endif # BUILD_MK #
