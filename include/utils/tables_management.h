@@ -85,7 +85,7 @@ typedef struct
  */
 typedef struct
 {
-    length_t size;                     /**< @brief Number of rows (table size) */
+    length_t size;                   /**< @brief Number of rows (table size) */
     pusRoutingTableEntry_t *entries; /**< @brief Pointer to the array of table rows */
 } pusRoutingTable_t;
 

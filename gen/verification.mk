@@ -28,6 +28,6 @@ CHECKER_CMDS += --suppress=misra-c2012-11.5 # Suppression of this rule because i
 # Checker recipes
 verif :
 	@mkdir -p $(OBJDIR)
-	@$(CHECKER) $(CHECKER_CMDS) $(INCFLAGS) $(SRCS) || (cat $(CHECKER_LOGS); echo $(CHECKER_ERROR_MSG) ; exit 1)
+	@$(CHECKER) $(CHECKER_CMDS) $(CHECKER_INCFLAGS) $(SRCS) || (cat $(CHECKER_LOGS); echo $(CHECKER_ERROR_MSG) ; exit 1)
 
 endif # VERIFICATION_MK #

@@ -11,10 +11,10 @@
 #include <string.h>
 
 #include "kernel.h"
-#include "tools/tc_parser.h"
-#include "tools/tables_management.h"
-#include "tools/schedule_management.h"
-#include "tools/crc_computation.h"
+#include "utils/tc_parser.h"
+#include "utils/tables_management.h"
+#include "utils/schedule_management.h"
+#include "utils/crc_computation.h"
 #include "services/pus1.h"
 #include "pus.h"
 

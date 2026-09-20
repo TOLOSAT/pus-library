@@ -15,8 +15,15 @@ PATCH = 5
 
 LIB_NAME = pus
 
-# Main recipe
+.PHONY : all clean
+
+# Main recipes
 all : build
+
+clean : build-clean
+
+print-%:
+	@printf '%s = %s\n' '$*' '$($*)'
 
 ##############################################
 ################## INCLUDES ##################

@@ -13,7 +13,7 @@
 #include "kernel.h"
 #include "tm_management.h"
 #include "services/pus11.h"
-#include "tools/schedule_management.h"
+#include "utils/schedule_management.h"
 
 /***************************** Macros Definitions ****************************/
 

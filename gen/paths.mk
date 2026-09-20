@@ -16,7 +16,8 @@ LIB_DIR  	= $(WORKSPACE)/middlewares/$(LIB_NAME)-library
 BUILD_DIR   = $(WORKSPACE)/build
 endif
 
-GEN_DIR          	= $(LIB_DIR)/gen
-OUTPUT_DIR         	= $(BUILD_DIR)/libs
+GEN_DIR         = $(LIB_DIR)/gen
+BUILD_STATE_DIR = $(BUILD_DIR)/state
+OUTPUT_DIR      = $(BUILD_DIR)/libs
 
 endif # PATH_MK #

@@ -12,7 +12,7 @@
 
 #include "kernel.h"
 #include "tm_management.h"
-#include "tools/crc_computation.h"
+#include "utils/crc_computation.h"
 
 /***************************** Macros Definitions ****************************/
 

@@ -8,7 +8,7 @@
 
 /******************************* Include Files *******************************/
 
-#include "tools/crc_computation.h"
+#include "utils/crc_computation.h"
 
 /***************************** Macros Definitions ****************************/
 
