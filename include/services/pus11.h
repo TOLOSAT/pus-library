@@ -4,6 +4,7 @@
  * @brief   Header file for PUS 11 functions (Time-based Scheduling)
  *
  * @copyright Copyright (c) TOLOSAT 2026
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /**

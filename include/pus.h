@@ -4,6 +4,7 @@
  * @brief   Header including all lib PUS common headers
  *
  * @copyright Copyright (c) TOLOSAT 2026
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /**

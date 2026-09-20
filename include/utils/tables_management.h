@@ -4,6 +4,7 @@
  * @brief   Header file for execution or routing tables
  *
  * @copyright Copyright (c) TOLOSAT 2026
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /**

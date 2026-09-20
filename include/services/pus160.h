@@ -4,6 +4,7 @@
  * @brief   Header file for PUS 160 functions (System Management)
  *
  * @copyright Copyright (c) TOLOSAT 2026
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /**

@@ -4,6 +4,7 @@
  * @brief   Header file for CRC computation
  *
  * @copyright Copyright (c) TOLOSAT 2026
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /**

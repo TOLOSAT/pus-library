@@ -13,3 +13,8 @@ make pus-clean
 ```
 
 The archive is written to `build/libs/libpus.a`.
+
+## License
+
+This library is licensed under the Apache License 2.0. See [`LICENSE`](LICENSE)
+for details.

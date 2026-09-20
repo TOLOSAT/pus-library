@@ -3,7 +3,8 @@
  * @author  Matteo Planchet
  * @brief   Source file for TC parsing
  *
- * @copyright Copyright (c) TOLOSAT 2025
+ * @copyright Copyright (c) TOLOSAT 2026
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /******************************* Include Files *******************************/

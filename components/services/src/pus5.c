@@ -4,6 +4,7 @@
  * @brief   Source file for PUS 5 functions (Event reporting)
  *
  * @copyright Copyright (c) TOLOSAT 2026
+ * SPDX-License-Identifier: Apache-2.0
  */
 
 /******************************* Include Files *******************************/
