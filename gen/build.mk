@@ -67,7 +67,7 @@ start :
 # Building recipes
 define COMPONENT_BUILD_RULE
 $(OBJDIR)/components/$(1)/%.o : $(COMPONENTS_DIR)/$(1)/src/%.c
-	@echo "  CC  [$(1)] $$(@F)"
+	@echo "  CC  [$(LIB_NAME)/$(1)] $$(@F)"
 	@mkdir -p $$(@D)
 	@$(CC) $(CFLAGS) $(INCFLAGS) $(if $(wildcard $(COMPONENTS_DIR)/$(1)/inc),-iquote $(COMPONENTS_DIR)/$(1)/inc) $$< -o $$@
 endef
@@ -76,7 +76,7 @@ $(foreach component,$(COMPONENTS),$(eval $(call COMPONENT_BUILD_RULE,$(component
 
 # Library generation
 $(LIB) : $(OBJS)
-	@echo "  AR  $(@F)"
+	@echo "  AR  [$(LIB_NAME)] $(@F)"
 	@mkdir -p $(@D)
 	@$(AR) rcs $@ $^
 
