@@ -7,7 +7,7 @@ ifndef AUTOCONF_MK
 AUTOCONF_MK := yes
 
 AUTOCONF_DIR = $(OBJDIR)/conf
-AUTOCONF_SRC = $(AUTOCONF_DIR)/autoconf.h
+AUTOCONF_SRC = $(AUTOCONF_DIR)/$(LIB_NAME)_autoconf.h
 AUTOCONF_STAMP = $(AUTOCONF_DIR)/autoconf.stamp
 AUTOCONF_GENERATOR = $(TOOLS_DIR)/config-parser.py
 AUTOCONF_KCONFIGS = $(GEN_DIR)/Kconfig.options
@@ -28,6 +28,7 @@ $(AUTOCONF_STAMP) : $(CONFIG_FILE) $(AUTOCONF_GENERATOR) $(AUTOCONF_KCONFIGS)
 	@echo "  PY  [$(LIB_NAME)/generated] $(notdir $(AUTOCONF_SRC))"
 	@mkdir -p $(@D)
 	@$(PYTHON) $(AUTOCONF_GENERATOR) -i $(CONFIG_FILE) -o $(@D) \
+		--header-name $(notdir $(AUTOCONF_SRC)) \
 		$(foreach kconfig,$(AUTOCONF_KCONFIGS),--kconfig $(kconfig))
 	@stamp_tmp="$@.tmp.$$$$"; \
 		printf '%s\n' $(notdir $(AUTOCONF_SRC)) > "$$stamp_tmp"; \
