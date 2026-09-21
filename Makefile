@@ -23,7 +23,7 @@ LIB_NAME = pus
 # Main recipes
 all : build
 
-clean : build-clean
+clean : pre-build-clean build-clean
 
 print-%:
 	@printf '%s = %s\n' '$*' '$($*)'
@@ -34,6 +34,8 @@ print-%:
 
 include gen/paths.mk
 include gen/settings.mk
+include gen/configuration.mk
+include gen/pre-build.mk
 include gen/build.mk
 include gen/verification.mk
 

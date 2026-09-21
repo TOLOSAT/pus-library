@@ -20,7 +20,10 @@ BUILD_DIR   = $(WORKSPACE)/build
 endif
 
 GEN_DIR         = $(LIB_DIR)/gen
+CONFIGS_DIR     = $(LIB_DIR)/configs
+TOOLS_DIR      ?= $(LIB_DIR)/tools
 BUILD_STATE_DIR = $(BUILD_DIR)/state
 OUTPUT_DIR      = $(BUILD_DIR)/libs
+OBJDIR          = $(BUILD_DIR)/middlewares/$(LIB_NAME)
 
 endif # PATH_MK #

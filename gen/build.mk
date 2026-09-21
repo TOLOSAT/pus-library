@@ -13,7 +13,6 @@ BUILD_MK := yes
 # Directories
 PUBLIC_INCDIR = $(LIB_DIR)/include
 COMPONENTS_DIR = $(LIB_DIR)/components
-OBJDIR = $(BUILD_DIR)/middlewares/$(LIB_NAME)
 
 # Files
 COMPONENTS = $(notdir $(wildcard $(COMPONENTS_DIR)/*))
@@ -28,7 +27,7 @@ FLAGS_FILE = $(BUILD_STATE_DIR)/$(LIB_NAME).flags
 #################### FLAGS ###################
 ##############################################
 
-INCDIRS			 = $(PUBLIC_INCDIR) $(COMPONENTS_DIR) $(KERNEL_HEADERS) $(EXTRA_INCS)
+INCDIRS			 = $(PUBLIC_INCDIR) $(COMPONENTS_DIR) $(AUTOCONF_DIR) $(KERNEL_HEADERS) $(EXTRA_INCS)
 PRIVATE_INCDIRS	 = $(foreach component,$(COMPONENTS),$(wildcard $(COMPONENTS_DIR)/$(component)/inc))
 INCFLAGS		 = $(addprefix -I,$(INCDIRS))
 CHECKER_INCFLAGS = $(INCFLAGS) $(addprefix -I,$(PRIVATE_INCDIRS))
@@ -38,9 +37,9 @@ CHECKER_INCFLAGS = $(INCFLAGS) $(addprefix -I,$(PRIVATE_INCDIRS))
 ##############################################
 
 .PHONY : build start end build-clean build-state-force
-build: end
+build: pre-build end
 end: $(LIB)
-$(OBJS): | start
+$(OBJS): $(AUTOCONF_SRC) | start
 build-state-force :
 
 $(FLAGS_FILE) : build-state-force

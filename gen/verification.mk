@@ -29,7 +29,7 @@ CHECKER_CMDS += --error-exitcode=1 # Returns 1 if cppcheck has encountered an er
 CHECKER_CMDS += --suppress=misra-c2012-11.5 # Suppression of this rule because it is use to pass PUS environment
 
 # Checker recipes
-verif :
+verif : autoconf
 	@mkdir -p $(OBJDIR)
 	@$(CHECKER) $(CHECKER_CMDS) $(CHECKER_INCFLAGS) $(SRCS) || (cat $(CHECKER_LOGS); echo $(CHECKER_ERROR_MSG) ; exit 1)
 
