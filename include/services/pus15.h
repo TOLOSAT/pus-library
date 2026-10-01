@@ -34,23 +34,39 @@
  */
 typedef enum
 {
-    PUS15_DISABLE = 0u, /**< PUS15 is disabled */
-    PUS15_ENABLE  = 1u, /**< PUS15 is enabled */
+    PUS15_DISABLED = 0u, /**< PUS15 is disabled */
+    PUS15_ENABLED  = 1u, /**< PUS15 is enabled */
 } pus15Status_t;
 
 typedef enum
 {
+    PUS15_PACKET_STORE_DISABLED = 0u, /**< Packet store is disabled */
+    PUS15_PACKET_STORE_ENABLED  = 1u, /**< Packet store is enabled */
+} pus15PacketStoreStatus_t;
+
+typedef enum {
+    PUS15_OPEN_RETRIEVAL_DISABLED = 0u, /**< Open retrieval is disabled */
+    PUS15_OPEN_RETRIEVAL_ENABLED  = 1u, /**< Open retrieval is enabled */
+} pus15PacketStoreOpenRetrievalStatus_t;
+
+typedef enum
+{
     PUS15_PACKET_STORE_TYPE_CIRCULAR = 0u, /**< Packet store type is circular */
-    PUS15_PACKET_STORE_TYPE_BOUNDED   = 1u, /**< Packet store type is bounded */
+    PUS15_PACKET_STORE_TYPE_BOUNDED  = 1u, /**< Packet store type is bounded */
 } pus15PacketStoreType_t;
 
 typedef struct 
 {
     pus15PacketStoreType_t type; /**< @brief Packet store type */
+    pus15PacketStoreStatus_t status; /**< @brief Packet store status */
     uint32_t size;               /**< @brief Packet store size */
-    uint32_t start_time;         /**< @brief Packet store start time */
-    uint32_t end_time;           /**< @brief Packet store end time */
 } ATTR_BYTE_ALIGNED pus15PacketStoreInfo_t;
+
+typedef struct {
+    uint32_t index;     /**< @brief Packet store index */
+    uint32_t timestamp; /**< @brief Packet store timestamp */
+} pus15PacketStoreIndexEntry_t;
+
 
 /**
  * @struct  pus15Env_t
