@@ -1,6 +1,6 @@
 /**
  * @file    pus15.h
- * @author  Matteo Planchet
+ * @author  Matteo Planchet, Arthur Morain
  * @brief   Header file for PUS 15 functions (On-board storage and retrieval)
  *
  * @copyright Copyright (c) TOLOSAT 2026
@@ -26,6 +26,8 @@
 
 /***************************** Macros Definitions ****************************/
 
+#define PUS15_MAXIMUM_PACKET_STORE_LENGTH 100u /**< PUS15 maximum packet store length */
+
 /***************************** Types Definitions *****************************/
 
 /**
@@ -44,10 +46,11 @@ typedef enum
     PUS15_PACKET_STORE_ENABLED  = 1u, /**< Packet store is enabled */
 } pus15PacketStoreStatus_t;
 
-typedef enum {
-    PUS15_OPEN_RETRIEVAL_DISABLED = 0u, /**< Open retrieval is disabled */
-    PUS15_OPEN_RETRIEVAL_ENABLED  = 1u, /**< Open retrieval is enabled */
-} pus15PacketStoreOpenRetrievalStatus_t;
+typedef enum
+{
+    PUS15_BY_TIME_RETRIEVAL_DISABLED = 0u, /**< By time retrieval is disabled */
+    PUS15_BY_TIME_RETRIEVAL_ENABLED  = 1u, /**< By time retrieval is enabled */
+} pus15PacketStoreByTimeRetrievalStatus_t;
 
 typedef enum
 {
@@ -55,18 +58,31 @@ typedef enum
     PUS15_PACKET_STORE_TYPE_BOUNDED  = 1u, /**< Packet store type is bounded */
 } pus15PacketStoreType_t;
 
-typedef struct 
+typedef struct
 {
-    pus15PacketStoreType_t type; /**< @brief Packet store type */
-    pus15PacketStoreStatus_t status; /**< @brief Packet store status */
-    uint32_t size;               /**< @brief Packet store size */
-} ATTR_BYTE_ALIGNED pus15PacketStoreInfo_t;
+    pus15PacketStoreType_t type;                                   /**< @brief Packet store type */
+    pus15PacketStoreStatus_t status;                               /**< @brief Packet store status */
+    pus15PacketStoreByTimeRetrievalStatus_t open_retrieval_status; /**< @brief Packet store open retrieval status */
+    uint32_t length;                                               /**< @brief Packet store length */
+    uint32_t nb_entries;                                           /**< @brief Packet store number of entries */
+    uint32_t write_cursor;                                         /**< @brief Packet store write cursor */
+    pus15PacketStoreIndexEntry_t *oldest_entry;                    /**< @brief Pointer to the oldest packet store index entry */
+} ATTR_BYTE_ALIGNED pus15PacketStoreIndexInfo_t;
 
-typedef struct {
-    uint32_t index;     /**< @brief Packet store index */
-    uint32_t timestamp; /**< @brief Packet store timestamp */
+typedef struct
+{
+    uint32_t timestamp;                 /**< @brief Packet store timestamp */
+    pus15Data_t *data;                  /**< @brief Pointer to the packet store data */
+    pus15PacketStoreIndexEntry_t *next; /**< @brief Pointer to the next packet store index entry */
 } pus15PacketStoreIndexEntry_t;
 
+typedef uint8_t[TM_MAX_SIZE] pus15Data_t;
+
+typedef struct
+{
+    pus15PacketStoreIndexInfo_t packet_store_info;       /**< @brief Packet store information */
+    pus15Data_t data[PUS15_MAXIMUM_PACKET_STORE_LENGTH]; /**< @brief Packet store data */
+} ATTR_BYTE_ALIGNED pus15PacketStore_t;
 
 /**
  * @struct  pus15Env_t
@@ -74,18 +90,16 @@ typedef struct {
  */
 typedef struct
 {
-    pusStatus_t status;            /**< @brief PUS15 environment status */
-    pus15Status_t pus15_status;    /**< @brief PUS15 status */
-    pus15PacketStoreInfo_t packet_store_info; /**< @brief Packet store information */
-    deviceNo_t dev_pus15_index;     /**< @brief Device bound to the pus15 index file */
-    deviceNo_t dev_pus15_data;     /**< @brief Device bound to the pus15 data file */
-    fileNo_t fil_pus15_index;      /**< @brief File where the pus15 index is stored */
-    fileNo_t fil_pus15_data;       /**< @brief File where the pus15 data is stored */
+    pusStatus_t status;              /**< @brief PUS15 environment status */
+    pus15Status_t pus15_status;      /**< @brief PUS15 status */
+    pus15PacketStore_t packet_store; /**< @brief Packet store */
+    deviceNo_t dev_pus15_index;      /**< @brief Device bound to the pus15 index file */
+    deviceNo_t dev_pus15_data;       /**< @brief Device bound to the pus15 data file */
+    fileNo_t fil_pus15_index;        /**< @brief File where the pus15 index is stored */
+    fileNo_t fil_pus15_data;         /**< @brief File where the pus15 data is stored */
 } pus15Env_t;
 
 /*************************** Variables Declarations **************************/
-
-/*************************** Functions Declarations **************************/
 
 /**
  * @fn          InitS15(pus15Env_t *pus15_env)
@@ -95,10 +109,9 @@ typedef struct
  */
 extern returnCode_t InitS15(pus15Env_t *pus15_env);
 
-
 /**
  * @fn              ExecuteS15SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that will enable the storage function of packet stores 
+ * @brief           Function that will enable the storage function of packet stores
  * @param[in,out]   env PUS15 environment
  * @param[in]       tc TC that has been received
  * @param[out]      tm TM that will be sent
@@ -121,6 +134,18 @@ extern returnCode_t ExecuteS15SS1(void *env, pusTC_t *tc, pusTM_t *tm, pusExecut
 extern returnCode_t ExecuteS15SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 /**
+ * @fn              ExecuteS15SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will start the by-time-range retrieval of packet stores
+ * @param[in,out]   env PUS15 environment
+ * @param[in]       tc TC that has been received
+ * @param[out]      tm TM that will be sent
+ * @param[out]      error_code Indicates which error has been encountered for S15SS9 TM
+ * @retval          #RET_INVALID_PARAM if a pointer is NULL
+ * @retval          #RET_SUCCESSFUL else
+ */
+extern returnCode_t ExecuteS15SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+
+/**
  * @fn              ExecuteS15SS11(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
  * @brief           Function that will delete the content of packet stores up to the specified time
  * @param[in,out]   env PUS15 environment
@@ -133,41 +158,16 @@ extern returnCode_t ExecuteS15SS2(void *env, pusTC_t *tc, pusTM_t *tm, pusExecut
 extern returnCode_t ExecuteS15SS11(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 /**
- * @fn              ExecuteS15SS14(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that will change the open retrieval start time tag of packet stores
+ * @fn              ExecuteS15SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+ * @brief           Function that will abort the by-time-range retrieval of packet stores
  * @param[in,out]   env PUS15 environment
  * @param[in]       tc TC that has been received
  * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S15SS14 TM
+ * @param[out]      error_code Indicates which error has been encountered for S15SS17 TM
  * @retval          #RET_INVALID_PARAM if a pointer is NULL
  * @retval          #RET_SUCCESSFUL else
  */
-extern returnCode_t ExecuteS15SS14(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
-
-/**
- * @fn              ExecuteS15SS15(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that will resume the open retrieval of packet stores
- * @param[in,out]   env PUS15 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S15SS15 TM
- * @retval          #RET_INVALID_PARAM if a pointer is NULL
- * @retval          #RET_SUCCESSFUL else
- */
-extern returnCode_t ExecuteS15SS15(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
-
-// TC[15,16] suspend the open retrieval of packet stores 
-/**
- * @fn              ExecuteS15SS16(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
- * @brief           Function that will suspend the open retrieval of packet stores
- * @param[in,out]   env PUS15 environment
- * @param[in]       tc TC that has been received
- * @param[out]      tm TM that will be sent
- * @param[out]      error_code Indicates which error has been encountered for S15SS16 TM
- * @retval          #RET_INVALID_PARAM if a pointer is NULL
- * @retval          #RET_SUCCESSFUL else
- */
-extern returnCode_t ExecuteS15SS16(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
+extern returnCode_t ExecuteS15SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 /**
  * @fn              ExecuteS15SS18(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
@@ -194,7 +194,7 @@ extern returnCode_t ExecuteS15SS18(void *env, pusTC_t *tc, pusTM_t *tm, pusExecu
 extern returnCode_t ExecuteS15SS26(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code);
 
 /**
- * @fn             ExecuteS15SS27(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code) 
+ * @fn             ExecuteS15SS27(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
  * @brief           Function that will change a packet store type to bounded
  * @param[in,out]   env PUS15 environment
  * @param[in]       tc TC that has been received
