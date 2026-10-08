@@ -16,6 +16,8 @@
 
 /***************************** Macros Definitions ****************************/
 
+#define ZERO_FILLED_DATA_SIZE 512u /**< Size of zero filled data (used for reset purposes) */
+
 /*************************** Functions Declarations **************************/
 
 /*************************** Variables Definitions ***************************/
@@ -36,7 +38,6 @@ returnCode_t InitS15(pus15Env_t *pus15_env)
             return_value = DeviceOpen(&pus15_env->dev_pus15_data, DEVICE_TYPE_FILE, pus15_env->fil_pus15_data);
             if (return_value == RET_SUCCESSFUL)
             {
-                // TODO: WIP, check files and reset them if needed
             }
         }
     }
@@ -48,33 +49,7 @@ returnCode_t InitS15(pus15Env_t *pus15_env)
     return return_value;
 }
 
-/**
- * @fn              ResetIndexAndData(pus15Env_t *pus15_env)
- * @brief           This function reset index and data file (filling them with zeros)
- * @param[in,out]   pus15_env PUS15 environment
- * @retval          #RET_ERROR if write in FS has encountered an error
- * @retval          #RET_SUCCESSFUL else
- */
-static returnCode_t ResetIndexAndData(pus15Env_t *pus15_env)
-{
-    returnCode_t return_value = RET_SUCCESSFUL;
-
-    // Check parameter(s)
-    if (pus15_env != NULL)
-    {
-        // Zero fill index file
-        return_value = ZeroFillDevice(pus15_env->dev_pus15_index, INDEX_SIZE);
-        if (return_value == RET_SUCCESSFUL)
-        {
-            // Zero fill data file
-            return_value = ZeroFillDevice(pus15_env->dev_pus15_data, PUS15_DATA_TABLE_SIZE);
-        }
-    }
-
-    return return_value;
-}
-
-// TODO: when PUS11 is updated, make this function generic
+// TODO: when PUS11 is updated, make this function generic https://github.com/TOLOSAT/flight-software/issues/138
 /**
  * @fn          ZeroFillDevice(deviceNo_t device, length_t total_size)
  * @brief       Fill a device file with zeros from the beginning
@@ -107,6 +82,32 @@ static returnCode_t ZeroFillDevice(deviceNo_t device, length_t total_size)
                 return_value    = DeviceWrite(device, (data_t)&zero_filled_data, remaining_bytes);
                 remaining_bytes = 0u;
             }
+        }
+    }
+
+    return return_value;
+}
+
+/**
+ * @fn              ResetIndexAndData(pus15Env_t *pus15_env)
+ * @brief           This function reset index and data file (filling them with zeros)
+ * @param[in,out]   pus15_env PUS15 environment
+ * @retval          #RET_ERROR if write in FS has encountered an error
+ * @retval          #RET_SUCCESSFUL else
+ */
+static returnCode_t ResetIndexAndData(pus15Env_t *pus15_env)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Check parameter(s)
+    if (pus15_env != NULL)
+    {
+        // Zero fill index file
+        return_value = ZeroFillDevice(pus15_env->dev_pus15_index, PUS15_INDEX_TABLE_SIZE);
+        if (return_value == RET_SUCCESSFUL)
+        {
+            // Zero fill data file
+            return_value = ZeroFillDevice(pus15_env->dev_pus15_data, PUS15_DATA_TABLE_SIZE);
         }
     }
 

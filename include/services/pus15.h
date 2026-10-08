@@ -27,6 +27,9 @@
 /***************************** Macros Definitions ****************************/
 
 #define PUS15_MAXIMUM_PACKET_STORE_LENGTH 100u /**< PUS15 maximum packet store length */
+#define PUS15_INDEX_TABLE_SIZE \
+    sizeof(pus15PacketStoreIndexInfo_t) + (PUS15_MAXIMUM_PACKET_STORE_LENGTH * sizeof(pus15PacketStoreIndexEntry_t)) /**< PUS15 index table size */
+#define PUS15_DATA_TABLE_SIZE PUS15_MAXIMUM_PACKET_STORE_LENGTH * sizeof(TM_MAX_SIZE)                                /**< PUS15 data table size */
 
 /***************************** Types Definitions *****************************/
 
@@ -69,14 +72,14 @@ typedef struct
     pus15PacketStoreIndexEntry_t *oldest_entry;                    /**< @brief Pointer to the oldest packet store index entry */
 } ATTR_BYTE_ALIGNED pus15PacketStoreIndexInfo_t;
 
+typedef uint8_t pus15Data_t[TM_MAX_SIZE];
+
 typedef struct
 {
     uint32_t timestamp;                 /**< @brief Packet store timestamp */
     pus15Data_t *data;                  /**< @brief Pointer to the packet store data */
     pus15PacketStoreIndexEntry_t *next; /**< @brief Pointer to the next packet store index entry */
 } pus15PacketStoreIndexEntry_t;
-
-typedef uint8_t[TM_MAX_SIZE] pus15Data_t;
 
 typedef struct
 {
