@@ -26,22 +26,16 @@
 
 /***************************** Macros Definitions ****************************/
 
+#define PUS15_PACKET_STORE_ID_SIZE        8u   /**< PUS15 packet store ID size */
 #define PUS15_MAXIMUM_PACKET_STORE_LENGTH 100u /**< PUS15 maximum packet store length */
 #define PUS15_INDEX_TABLE_SIZE \
     sizeof(pus15PacketStoreIndexInfo_t) + (PUS15_MAXIMUM_PACKET_STORE_LENGTH * sizeof(pus15PacketStoreIndexEntry_t)) /**< PUS15 index table size */
 #define PUS15_DATA_TABLE_SIZE PUS15_MAXIMUM_PACKET_STORE_LENGTH * sizeof(TM_MAX_SIZE)                                /**< PUS15 data table size */
+#define S15SS18_DATA_SIZE \
+    sizeof(pus15PacketStoreByTimeRetrievalStatus_t) + sizeof(pus15PacketStoreStatus_t) + PUS15_PACKET_STORE_ID_SIZE + 1u + 1u //**< S15SS18 data size
+                                                                                                                              //*/
 
 /***************************** Types Definitions *****************************/
-
-/**
- * @enum    pus15Status_t
- * @brief   PUS 15 status enum
- */
-typedef enum
-{
-    PUS15_DISABLED = 0u, /**< PUS15 is disabled */
-    PUS15_ENABLED  = 1u, /**< PUS15 is enabled */
-} pus15Status_t;
 
 typedef enum
 {
@@ -63,13 +57,14 @@ typedef enum
 
 typedef struct
 {
-    pus15PacketStoreType_t type;                                   /**< @brief Packet store type */
-    pus15PacketStoreStatus_t status;                               /**< @brief Packet store status */
-    pus15PacketStoreByTimeRetrievalStatus_t open_retrieval_status; /**< @brief Packet store open retrieval status */
-    uint32_t length;                                               /**< @brief Packet store length */
-    uint32_t nb_entries;                                           /**< @brief Packet store number of entries */
-    uint32_t write_cursor;                                         /**< @brief Packet store write cursor */
-    pus15PacketStoreIndexEntry_t *oldest_entry;                    /**< @brief Pointer to the oldest packet store index entry */
+    char id[PUS15_PACKET_STORE_ID_SIZE];                              /**< @brief Packet store name */
+    pus15PacketStoreType_t type;                                      /**< @brief Packet store type */
+    pus15PacketStoreStatus_t status;                                  /**< @brief Packet store status */
+    pus15PacketStoreByTimeRetrievalStatus_t by_time_retrieval_status; /**< @brief Packet store by time retrieval status */
+    uint32_t length;                                                  /**< @brief Packet store length */
+    uint32_t nb_entries;                                              /**< @brief Packet store number of entries */
+    uint32_t write_cursor;                                            /**< @brief Packet store write cursor */
+    pus15PacketStoreIndexEntry_t *oldest_entry;                       /**< @brief Pointer to the oldest packet store index entry */
 } ATTR_BYTE_ALIGNED pus15PacketStoreIndexInfo_t;
 
 typedef uint8_t pus15Data_t[TM_MAX_SIZE];
@@ -94,7 +89,6 @@ typedef struct
 typedef struct
 {
     pusStatus_t status;              /**< @brief PUS15 environment status */
-    pus15Status_t pus15_status;      /**< @brief PUS15 status */
     pus15PacketStore_t packet_store; /**< @brief Packet store */
     deviceNo_t dev_pus15_index;      /**< @brief Device bound to the pus15 index file */
     deviceNo_t dev_pus15_data;       /**< @brief Device bound to the pus15 data file */
