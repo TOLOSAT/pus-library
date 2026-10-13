@@ -71,7 +71,7 @@ typedef uint8_t pus15Data_t[TM_MAX_SIZE];
 
 typedef struct
 {
-    uint32_t timestamp;                 /**< @brief Packet store timestamp */
+    time_t timestamp;                   /**< @brief Packet store timestamp */
     pus15Data_t *data;                  /**< @brief Pointer to the packet store data */
     pus15PacketStoreIndexEntry_t *next; /**< @brief Pointer to the next packet store index entry */
 } pus15PacketStoreIndexEntry_t;

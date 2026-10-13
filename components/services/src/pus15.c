@@ -56,18 +56,21 @@ returnCode_t InitS15(pus15Env_t *pus15_env)
                                 // Pus15 files are complete
                                 return_value = RET_SUCCESSFUL;
 
-                                // Read packet store info from index file header
-                                pus15PacketStoreIndexInfo_t packet_store_info = { 0 };
-                                // TODO need to set read cursor at the beginning of the file, idk how to rn
-                                return_value = FsRead(pus15_env->fil_pus15_index, (data_t)&packet_store_info, sizeof(pus15PacketStoreIndexInfo_t));
+                                // Set the read/write pointer to the beginning of the file
+                                length_t offset = 0u;
+                                return_value    = DeviceIoctl(pus15_env->dev_pus15_index, IOCTL_FS_SEEK, &offset, sizeof(length_t));
 
                                 if (return_value == RET_SUCCESSFUL)
                                 {
-                                    pus15_env->packet_store.packet_store_info = packet_store_info;
-                                }
-                                else
-                                {
-                                    return_value = RET_ERROR;
+                                    // Read packet store info from index file header
+                                    pus15PacketStoreIndexInfo_t packet_store_info = { 0 };
+                                    return_value =
+                                        DeviceRead(pus15_env->dev_pus15_index, (data_t)&packet_store_info, sizeof(pus15PacketStoreIndexInfo_t));
+
+                                    if (return_value == RET_SUCCESSFUL)
+                                    {
+                                        pus15_env->packet_store.packet_store_info = packet_store_info;
+                                    }
                                 }
                             }
                             else
@@ -232,6 +235,7 @@ static returnCode_t ResetIndexAndData(pus15Env_t *pus15_env)
         // Write packet store info in index file header
         if (return_value == RET_SUCCESSFUL)
         {
+            // Initialize the packet store info
             pus15PacketStoreIndexInfo_t packet_store_info = { id                       = "MAIN",
                                                               type                     = PUS15_PACKET_STORE_TYPE_CIRCULAR,
                                                               status                   = PUS15_PACKET_STORE_DISABLED,
@@ -243,13 +247,20 @@ static returnCode_t ResetIndexAndData(pus15Env_t *pus15_env)
 
             pus15_env->packet_store.packet_store_info = packet_store_info;
 
-            // TODO need to set write cursor at the beginning of the file, idk how to rn
-            return_value = FsWrite(pus15_env->fil_pus15_index, (data_t)&packet_store_info, sizeof(pus15PacketStoreIndexInfo_t));
+            // Set the read/write pointer to the beginning of the file
+            length_t offset = 0u;
+            return_value    = DeviceIoctl(pus15_env->dev_pus15_index, IOCTL_FS_SEEK, &offset, sizeof(length_t));
 
             if (return_value == RET_SUCCESSFUL)
             {
-                // Zero fill data file
-                return_value = ZeroFillDevice(pus15_env->dev_pus15_data, PUS15_DATA_TABLE_SIZE);
+                // Write packet store info in index file header
+                return_value = DeviceWrite(pus15_env->dev_pus15_index, (data_t)&packet_store_info, sizeof(pus15PacketStoreIndexInfo_t));
+
+                if (return_value == RET_SUCCESSFUL)
+                {
+                    // Zero fill data file
+                    return_value = ZeroFillDevice(pus15_env->dev_pus15_data, PUS15_DATA_TABLE_SIZE);
+                }
             }
         }
     }
@@ -354,19 +365,110 @@ returnCode_t ExecuteS15SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
             // Retrieval priority not implemented yet, it's optional so we don't check it for now.
 
             // Retrieve from time (in CUC format)
-            cucTime_t from_time = { 0 };
-            memcpy(&from_time, &packet_store_data[PUS15_PACKET_STORE_ID_SIZE], sizeof(cucTime_t));
+            time_t from_time = { 0 };
+            memcpy(&from_time, &packet_store_data[PUS15_PACKET_STORE_ID_SIZE], sizeof(time_t));
 
             // Retrieve stop time (in CUC format)
-            cucTime_t stop_time = { 0 };
-            memcpy(&stop_time, &packet_store_data[PUS15_PACKET_STORE_ID_SIZE + sizeof(cucTime_t)], sizeof(cucTime_t));
+            time_t stop_time = { 0 };
+            memcpy(&stop_time, &packet_store_data[PUS15_PACKET_STORE_ID_SIZE + sizeof(time_t)], sizeof(time_t));
 
-            // TODO: Implement the retrieval logic based on the from_time and stop_time, and send the TMs to the TmSender
-            // basically:
-            // start from the oldest entry in the packet store index
-            // check each entry's timestamp,
-            // and if it falls within the from_time and stop_time range,
-            // retrieve the corresponding data from the packet store data file and send it to TmSender
+            pus15PacketStoreIndexEntry_t *current_entry = &pus15_env->packet_store.packet_store_info.oldest_entry;
+
+            // Send the TMs between from_time and stop_time to the TmSender while the by-time-range retrieval is enabled
+            while ((current_entry->timestamp <= stop_time) && (current_entry != NULL)
+                   && (&pus15_env->packet_store.packet_store_info.by_time_retrieval_status == PUS15_BY_TIME_RETRIEVAL_ENABLED))
+            {
+                if (current_entry->timestamp >= from_time)
+                {
+                    pusTM_t tm = current_entry->data;
+                    // TODO: Send the TM to the TmSender (not implemented yet)
+                }
+                current_entry = current_entry->next;
+            }
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
+ * @copydoc ExecuteS15SS11
+ */
+returnCode_t ExecuteS15SS11(void *env, pucTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Unused Parameters
+    (void)(tm);
+
+    // Check parameter(s)
+    if ((env != NULL) && (tc != NULL) && (error_code != NULL))
+    {
+        // Error Code Initialization
+        *error_code = PUS_EXECUTION_NO_ERROR;
+
+        // Get environment
+        pus15Env_t *pus15_env = (pus15Env_t *)env;
+
+        // Check if pus15 is initialized and packet store is enabled
+        if ((pus15_env->status == PUS_INITIALIZED) && (pus15_env->packet_store.packet_store_info.status == PUS15_PACKET_STORE_ENABLED))
+        {
+            // Retrieve the data from the TC
+            pusData_t *packet_store_data = &tc->data[sizeof(pusNField_t)];
+
+            // Retrieve packet store ID from TC data (since we only have one packet store, we don't check the ID for now)
+            char packet_store_id[PUS15_PACKET_STORE_ID_SIZE] = { 0 };
+            memcpy(packet_store_id, packet_store_data, PUS15_PACKET_STORE_ID_SIZE);
+
+            // Retrieve the specified time from the TC data (in CUC format)
+            time_t specified_time = { 0 };
+            memcpy(&specified_time, &packet_store_data[PUS15_PACKET_STORE_ID_SIZE], sizeof(time_t));
+
+            // Erase all entries in the packet store that are older than the specified_time.
+            pus15PacketStoreIndexEntry_t *oldest_entry = &pus15_env->packet_store.packet_store_info.oldest_entry;
+
+            while ((oldest_entry->timestamp <= specified_time) && (oldest_entry != NULL))
+            {
+                *pus15_env->packet_store.packet_store_info.oldest_entry = *oldest_entry->next;
+                oldest_entry                                            = oldest_entry->next;
+            }
+        }
+    }
+    else
+    {
+        return_value = RET_INVALID_PARAM;
+    }
+
+    return return_value;
+}
+
+/**
+ * @copydoc ExecuteS15SS17
+ */
+returnCode_t ExecuteS15SS17(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionError_t *error_code)
+{
+    returnCode_t return_value = RET_SUCCESSFUL;
+
+    // Unused Parameters
+    (void)(tm);
+
+    // Check parameter(s)
+    if ((env != NULL) && (tc != NULL) && (error_code != NULL))
+    {
+        // Error Code Initialization
+        *error_code = PUS_EXECUTION_NO_ERROR;
+
+        // Get environment
+        pus15Env_t *pus15_env = (pus15Env_t *)env;
+
+        // Check if pus15 is initialized and packet store is enabled
+        if ((pus15_env->status == PUS_INITIALIZED) && (pus15_env->packet_store.packet_store_info.status == PUS15_PACKET_STORE_ENABLED))
+        {
+            pus15_env->packet_store.packet_store_info.status == PUS15_PACKET_STORE_DISABLED;
         }
     }
     else
@@ -426,7 +528,7 @@ returnCode_t ExecuteS15SS18(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErr
             data[index++] = (uint8_t)pus15_env->packet_store.packet_store_info.by_time_retrieval_status;
 
             // Build TM
-            return_value = BuildTM(tm, 1u, 1u, (pusData_t *)&data, S15SS18_DATA_SIZE);
+            return_value = BuildTM(tm, 15u, 19u, (pusData_t *)&data, S15SS18_DATA_SIZE);
         }
     }
     else
