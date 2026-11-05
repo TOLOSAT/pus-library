@@ -67,19 +67,17 @@ typedef struct
     pus15PacketStoreIndexEntry_t *oldest_entry;                       /**< @brief Pointer to the oldest packet store index entry */
 } ATTR_BYTE_ALIGNED pus15PacketStoreIndexInfo_t;
 
-typedef uint8_t pus15Data_t[TM_MAX_SIZE];
-
 typedef struct
 {
     time_t timestamp;                   /**< @brief Packet store timestamp */
-    pus15Data_t *data;                  /**< @brief Pointer to the packet store data */
+    pusTM_t *tm_data;                   /**< @brief Pointer to the packet store data */
     pus15PacketStoreIndexEntry_t *next; /**< @brief Pointer to the next packet store index entry */
 } pus15PacketStoreIndexEntry_t;
 
 typedef struct
 {
-    pus15PacketStoreIndexInfo_t packet_store_info;       /**< @brief Packet store information */
-    pus15Data_t data[PUS15_MAXIMUM_PACKET_STORE_LENGTH]; /**< @brief Packet store data */
+    pus15PacketStoreIndexInfo_t packet_store_info;                           /**< @brief Packet store information */
+    pus15PacketStoreIndexEntry_t entries[PUS15_MAXIMUM_PACKET_STORE_LENGTH]; /**< @brief Packet store data */
 } ATTR_BYTE_ALIGNED pus15PacketStore_t;
 
 /**

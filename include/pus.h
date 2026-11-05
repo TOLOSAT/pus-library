@@ -29,6 +29,7 @@
 #include "services/pus6.h"
 #include "services/pus9.h"
 #include "services/pus11.h"
+#include "services/pus15.h"
 #include "services/pus17.h"
 #include "services/pus160.h"
 

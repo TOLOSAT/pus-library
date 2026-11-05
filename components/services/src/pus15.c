@@ -381,7 +381,9 @@ returnCode_t ExecuteS15SS9(void *env, pusTC_t *tc, pusTM_t *tm, pusExecutionErro
                 if (current_entry->timestamp >= from_time)
                 {
                     pusTM_t tm = current_entry->data;
-                    // TODO: Send the TM to the TmSender (not implemented yet)
+                    // Send the TM to the TmSender via his specified buffer
+                    // TODO: Open the buffer and send the TM to the TmSender via his specified buffer
+                    return_value = DeviceWrite(&pus15_env->dev_pus15_data, (data_t)&tm, TM_MAX_SIZE);
                 }
                 current_entry = current_entry->next;
             }
