@@ -90,6 +90,7 @@ typedef struct
     pus15PacketStore_t packet_store; /**< @brief Packet store */
     deviceNo_t dev_pus15_index;      /**< @brief Device bound to the pus15 index file */
     deviceNo_t dev_pus15_data;       /**< @brief Device bound to the pus15 data file */
+    deviceNo_t dev_tm_sender;        /**< @brief Device bound to the pus15 TM sender */
     fileNo_t fil_pus15_index;        /**< @brief File where the pus15 index is stored */
     fileNo_t fil_pus15_data;         /**< @brief File where the pus15 data is stored */
 } pus15Env_t;
